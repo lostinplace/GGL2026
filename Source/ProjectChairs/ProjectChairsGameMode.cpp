@@ -4,5 +4,5 @@
 
 AProjectChairsGameMode::AProjectChairsGameMode()
 {
-	// stub
+	PlayerStateClass = AProjectChairsPlayerState::StaticClass();
 }
