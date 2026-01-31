@@ -39,7 +39,7 @@ public:
 
 	/** Discard a card from the hand (removes it from play) */
 	UFUNCTION(BlueprintCallable, Category = "Cards")
-	bool DiscardCardFromHand(UCardObject* Card);
+	bool PlayCardFromHand(UCardObject* Card);
 
 	/** Get the current deck */
 	UFUNCTION(BlueprintCallable, Category = "Cards")
@@ -57,6 +57,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cards")
 	int32 GetHandCount() const { return Hand.Num(); }
 
+	/** Get the maximum hand size */
+	UFUNCTION(BlueprintCallable, Category = "Cards")
+	int32 GetMaxHandSize() const { return MaxHandSize; }
+
+	/** Check if the hand is at maximum capacity */
+	UFUNCTION(BlueprintCallable, Category = "Cards")
+	bool IsHandFull() const { return Hand.Num() >= MaxHandSize; }
+
 	/** Get the discard pile */
 	UFUNCTION(BlueprintCallable, Category = "Cards")
 	const TArray<UCardObject*>& GetDiscardPile() const { return DiscardPile; }
@@ -72,6 +80,10 @@ protected:
 	/** The default deck configuration to use if none is specified */
 	UPROPERTY(EditDefaultsOnly, Category = "Cards")
 	UDeckConfigurationDataAsset* DefaultDeckConfiguration;
+
+	/** Maximum number of cards allowed in the hand */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cards")
+	int32 MaxHandSize = 7;
 
 	/** The player's current deck (cards not yet drawn) */
 	UPROPERTY(BlueprintReadOnly, Category = "Cards")

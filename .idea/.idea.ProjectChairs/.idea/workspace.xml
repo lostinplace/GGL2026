@@ -10,6 +10,11 @@
   <component name="ChangeListManager">
     <list default="true" id="2c0d7788-5ca3-43b2-bf64-3126a33c0851" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.ProjectChairs/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.ProjectChairs/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Plugins/ChessGame/ChessGame.uplugin" beforeDir="false" afterPath="$PROJECT_DIR$/Plugins/ChessGame/ChessGame.uplugin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ProjectChairs.uproject" beforeDir="false" afterPath="$PROJECT_DIR$/ProjectChairs.uproject" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/ProjectChairs/ProjectChairs.Build.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Source/ProjectChairs/ProjectChairs.Build.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/ProjectChairs/ProjectChairsPlayerState.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Source/ProjectChairs/ProjectChairsPlayerState.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Source/ProjectChairs/ProjectChairsPlayerState.h" beforeDir="false" afterPath="$PROJECT_DIR$/Source/ProjectChairs/ProjectChairsPlayerState.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -26,7 +31,7 @@
     <option name="firstShow" value="false" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="12250" />
+    <option name="cachedIndexableFilesCount" value="12251" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -34,11 +39,20 @@
   </component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/.ai/mcp/mcp.json" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/CardSystem/CardDataAsset.h" root0="SKIP_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Plugins/ChessGame/ChessGame.uplugin" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/ChessGame.Build.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/Public/Presentation/ChessPieceActor.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Plugins/Developer/RiderLink/RiderLink.uplugin" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/CardSystem/CardDataAsset.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/CardSystem/CardEffect.cpp" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/CardSystem/CardEffect.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/CardSystem/CardObject.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/CardSystem/CardTypes.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/CardSystem/DeckConfigurationDataAsset.cpp" root0="SKIP_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/CardSystem/DeckConfigurationDataAsset.h" root0="SKIP_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/ProjectChairsPlayerState.cpp" root0="SKIP_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/CardSystem/DeckConfigurationDataAsset.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/ProjectChairsChessPieceActor.cpp" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/ProjectChairsChessPieceActor.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Source/ProjectChairs/ProjectChairsPlayerState.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://E:/UnrealEngine/UE_5.7/Engine/Source/Runtime/Engine/Classes/GameFramework/GameModeBase.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://E:/UnrealEngine/UE_5.7/Engine/Source/Runtime/Engine/Classes/GameFramework/HUD.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://E:/UnrealEngine/UE_5.7/Engine/Source/Runtime/Engine/Classes/GameFramework/PlayerState.h" root0="FORCE_HIGHLIGHTING" />
@@ -82,10 +96,10 @@
 }</component>
   <component name="RecapSpentCounter">
     <option name="endsOfQuotaMs" value="1770037235291" />
-    <option name="spentUsd" value="0.03373175" />
+    <option name="spentUsd" value="0.10142075" />
   </component>
   <component name="RecapUselessUpdatesCounter">
-    <option name="suspendCountdown" value="4" />
+    <option name="suspendCountdown" value="3" />
   </component>
   <component name="RunManager" selected="C/C++ Project.ProjectChairs">
     <configuration name="ProjectChairs" type="CppProject" factoryName="C++ Project">
@@ -101,6 +115,18 @@
         <option name="TERMINAL_INTERACTION_BEHAVIOR" value="AUTO_DETECT" />
         <option name="PROJECT_FILE_PATH" value="$PROJECT_DIR$/Intermediate/ProjectFiles/ProjectChairs.vcxproj" />
       </configuration_1>
+      <configuration_2 setup="1">
+        <option name="CONFIGURATION" value="DebugGame_Editor" />
+        <option name="PLATFORM" value="x64" />
+        <option name="CURRENT_LAUNCH_PROFILE" value="Local" />
+        <option name="EXE_PATH" value="$(LocalDebuggerCommand)" />
+        <option name="PROGRAM_PARAMETERS" value="$(LocalDebuggerCommandArguments)" />
+        <option name="WORKING_DIRECTORY" value="$(LocalDebuggerWorkingDirectory)" />
+        <option name="PASS_PARENT_ENVS" value="1" />
+        <option name="USE_EXTERNAL_CONSOLE" value="0" />
+        <option name="TERMINAL_INTERACTION_BEHAVIOR" value="AUTO_DETECT" />
+        <option name="PROJECT_FILE_PATH" value="$PROJECT_DIR$/Intermediate/ProjectFiles/ProjectChairs.vcxproj" />
+      </configuration_2>
       <option name="DEFAULT_PROJECT_PATH" value="$PROJECT_DIR$/Intermediate/ProjectFiles/ProjectChairs.vcxproj" />
       <option name="PROJECT_FILE_PATH" value="$PROJECT_DIR$/Intermediate/ProjectFiles/ProjectChairs.vcxproj" />
       <option name="AUTO_SELECT_PRIORITY" value="10010" />
@@ -116,6 +142,10 @@
         <option name="Build" />
       </method>
     </configuration>
+    <list>
+      <item itemvalue="C/C++ Project.ProjectChairs" />
+      <item itemvalue="C/C++ Project.UE5" />
+    </list>
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -127,6 +157,7 @@
       <workItem from="1769809802594" duration="466000" />
       <workItem from="1769810478149" duration="5434000" />
       <workItem from="1769818390007" duration="870000" />
+      <workItem from="1769871777409" duration="1634000" />
     </task>
     <servers />
   </component>

@@ -86,7 +86,7 @@ void AProjectChairsPlayerState::DrawCards(int32 Count)
 	}
 }
 
-bool AProjectChairsPlayerState::DiscardCardFromHand(UCardObject* Card)
+bool AProjectChairsPlayerState::PlayCardFromHand(UCardObject* Card)
 {
 	if (!Card)
 	{
