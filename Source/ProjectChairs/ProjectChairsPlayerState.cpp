@@ -1,10 +1,19 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "ProjectChairsPlayerState.h"
+#include "Net/UnrealNetwork.h"
 
 AProjectChairsPlayerState::AProjectChairsPlayerState()
 	: DefaultDeckConfiguration(nullptr)
 {
+}
+
+void AProjectChairsPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AProjectChairsPlayerState, AssignedChessColor);
+	DOREPLIFETIME(AProjectChairsPlayerState, bHasAssignedColor);
 }
 
 void AProjectChairsPlayerState::BeginPlay()

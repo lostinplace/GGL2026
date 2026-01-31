@@ -19,6 +19,7 @@ public class ProjectChairs : ModuleRules
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate",
+			"SlateCore",
 			"ChessGame"
 		});
 
@@ -26,6 +27,7 @@ public class ProjectChairs : ModuleRules
 
 		PublicIncludePaths.AddRange(new string[] {
 			"ProjectChairs",
+			"ProjectChairs/UI",
 			"ProjectChairs/Variant_Platforming",
 			"ProjectChairs/Variant_Platforming/Animation",
 			"ProjectChairs/Variant_Combat",

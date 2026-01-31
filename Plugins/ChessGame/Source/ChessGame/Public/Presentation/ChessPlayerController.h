@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Logic/ChessData.h"
 #include "Presentation/ChessBoardActor.h"
 #include "ChessPlayerController.generated.h"
 
@@ -22,10 +23,20 @@ protected:
 
 	// Actions
 	void OnMouseClick();
-	
+
 	// Enhanced Input
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputAction* ClickAction;
+
+	// Turn Validation
+	/** Check if this player can interact (is it their turn in multiplayer) */
+	bool CanInteract() const;
+
+	/** Get the assigned chess color for this player from PlayerState */
+	EPieceColor GetAssignedColor() const;
+
+	/** Check if the player has been assigned a color (multiplayer mode) */
+	bool HasAssignedColor() const;
 
 public:
 	// The board we are currently interacting with
