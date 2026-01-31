@@ -38,6 +38,8 @@ public class ChessGame : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"InputCore",
+				"EnhancedInput",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

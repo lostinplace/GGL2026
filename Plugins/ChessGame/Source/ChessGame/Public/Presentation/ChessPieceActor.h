@@ -47,6 +47,9 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnPromoted(EPieceType NewType);
 
+	UFUNCTION(BlueprintNativeEvent)
+	void OnSelectionChanged(bool bSelected);
+
 public:
 	void Init(int32 InPieceId, EPieceType InType, EPieceColor InColor);
 

@@ -1,6 +1,7 @@
 #include "Presentation/ChessBoardActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
+#include "DrawDebugHelpers.h"
 
 AChessBoardActor::AChessBoardActor()
 {
@@ -8,6 +9,35 @@ AChessBoardActor::AChessBoardActor()
 	bReplicates = true;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SelectedCoord = FBoardCoord(-1, -1);
+}
+
+void AChessBoardActor::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bShowDebugGrid)
+	{
+		for (int32 File = 0; File < 8; ++File)
+		{
+			for (int32 Rank = 0; Rank < 8; ++Rank)
+			{
+				bool bIsBlack = (File + Rank) % 2 == 0;
+				if (bIsBlack)
+				{
+					FVector Center = CoordToWorld(FBoardCoord(File, Rank));
+					// Draw slightly above PieceHeightOffset to be visible? Or at it.
+					// Use a small extent
+					FVector Extent(SquareSize * 0.45f, SquareSize * 0.45f, 1.0f);
+					DrawDebugSolidBox(GetWorld(), Center, Extent, FColor(0, 0, 0, 128), false, -1.0f, 0);
+				}
+			}
+		}
+	}
+}
+
+bool AChessBoardActor::ShouldTickIfViewportsOnly() const
+{
+	return bShowDebugGrid;
 }
 
 void AChessBoardActor::BeginPlay()
@@ -80,29 +110,28 @@ void AChessBoardActor::HandleSquareClicked(FBoardCoord Coord)
 	int32 ClickedPieceId = GameModel->BoardState->GetPieceIdAt(Coord);
 	
 	// If we have a selection, try to move to clicked square
+	// Helper to notify piece selection
+	auto NotifySelection = [&](FBoardCoord Coord, bool bSelect) {
+		if (!Coord.IsValid()) return;
+		int32 PId = GameModel->BoardState->GetPieceIdAt(Coord);
+		if (AChessPieceActor** PA = PieceActors.Find(PId))
+		{
+			if (*PA) (*PA)->OnSelectionChanged(bSelect);
+		}
+	};
+
 	if (SelectedCoord.IsValid())
 	{
 		// Check if we clicked the same square (deselect)
 		if (SelectedCoord == Coord)
 		{
+			NotifySelection(SelectedCoord, false);
 			SelectedCoord = FBoardCoord(-1, -1);
 			OnClearHighlights();
 			return;
 		}
 
 		// Try to move
-		// Wait, did we click a friendly piece? If so, select it instead.
-		// Unless it's a valid move (e.g. castling might involve clicking rook? No, standard click-click is move king)
-		// Or capture.
-		
-		// If clicking own piece, switch selection usually, unless we want to support click-drag.
-		// Standard RTS/Chess click:
-		// 1. Select A
-		// 2. Click B. 
-		//    If B can be reached from A -> Move.
-		//    Else if B is own piece -> Select B.
-		//    Else -> Deselect.
-
 		bool bMoved = false;
 		
 		// Build a move. We need to find if there is a legal move from Selected to Coord.
@@ -133,37 +162,43 @@ void AChessBoardActor::HandleSquareClicked(FBoardCoord Coord)
 
 			// Call Server RPC
 			Server_TryMove(TargetMove);
-			// Optimistic local update? For now, wait for server/multicast to avoid desync
-			// Deselect immediately to frame UI
+			
+			// Deselect immediately
+			NotifySelection(SelectedCoord, false);
 			SelectedCoord = FBoardCoord(-1, -1);
 			OnClearHighlights();
+			return;
 		}
 		
-		if (!bMoved)
+		// If not a legal move, check if we are selecting a different friendly piece
+		if (ClickedPieceId != -1)
 		{
-			// If not a move, maybe selecting a different piece?
-			if (ClickedPieceId != -1)
+			const FPieceInstance* ClickedPiece = GameModel->BoardState->GetPiece(ClickedPieceId);
+			if (ClickedPiece && ClickedPiece->Color == GameModel->BoardState->SideToMove)
 			{
-				const FPieceInstance* ClickedPiece = GameModel->BoardState->GetPiece(ClickedPieceId);
-				if (ClickedPiece && ClickedPiece->Color == GameModel->BoardState->SideToMove)
-				{
-					SelectedCoord = Coord;
-					OnClearHighlights();
-					GameModel->GetLegalMovesForCoord(SelectedCoord, LegalMoves);
-					OnHighlightMoves(LegalMoves);
-				}
-				else
-				{
-					// Clicked empty or enemy, but not a valid move -> Deselect
-					SelectedCoord = FBoardCoord(-1, -1);
-					OnClearHighlights();
-				}
+				// Switch selection
+				NotifySelection(SelectedCoord, false);
+				SelectedCoord = Coord;
+				NotifySelection(SelectedCoord, true);
+				
+				OnClearHighlights();
+				GameModel->GetLegalMovesForCoord(SelectedCoord, LegalMoves);
+				OnHighlightMoves(LegalMoves);
 			}
 			else
 			{
+				// Clicked empty or enemy, but not a valid move -> Deselect
+				NotifySelection(SelectedCoord, false);
 				SelectedCoord = FBoardCoord(-1, -1);
 				OnClearHighlights();
 			}
+		}
+		else
+		{
+			// Clicked empty space invalid -> Deselect
+			NotifySelection(SelectedCoord, false);
+			SelectedCoord = FBoardCoord(-1, -1);
+			OnClearHighlights();
 		}
 	}
 	else
@@ -175,6 +210,8 @@ void AChessBoardActor::HandleSquareClicked(FBoardCoord Coord)
 			if (ClickedPiece && ClickedPiece->Color == GameModel->BoardState->SideToMove)
 			{
 				SelectedCoord = Coord;
+				NotifySelection(SelectedCoord, true);
+				
 				TArray<FChessMove> LegalMoves;
 				GameModel->GetLegalMovesForCoord(SelectedCoord, LegalMoves);
 				OnHighlightMoves(LegalMoves);
@@ -332,4 +369,31 @@ void AChessBoardActor::OnRep_ReplicatedState()
 		GameModel->BoardState->FromStruct(ReplicatedState);
 		SyncVisuals();
 	}
+}
+
+void AChessBoardActor::OnHighlightMoves_Implementation(const TArray<FChessMove>& Moves)
+{
+	// Default Debug Implementation
+	for (const FChessMove& Move : Moves)
+	{
+		FVector Center = CoordToWorld(Move.To);
+		// Draw a solid box (semi-transparent green), Persistent = true
+		DrawDebugSolidBox(GetWorld(), Center, FVector(SquareSize*0.4f, SquareSize*0.4f, 2.0f), FColor(0, 255, 0, 100), true);
+	}
+}
+
+void AChessBoardActor::OnClearHighlights_Implementation()
+{
+	// DrawDebugSolidBox doesn't have a specific "Clear" unless we use persistent lines and flush.
+	// But since we use Lifetime=-1 (one frame? no, -1 is default? Wait.)
+	// Default is -1.0f which means "Lifetime of line" ?? No.
+	// If bPersistent is false and Lifetime is -1, it lasts for one frame? 
+	// Actually DrawDebugSolidBox usually persists if bPersistent is true.
+	// If false, it's one frame.
+	
+	// Wait, if we draw on "Click", it won't persist if it's one frame.
+	// We need it to persist until cleared.
+	// So we should use bPersistent = true? And FlushDebugStrings? No, FlushPersistentDebugLines.
+	
+	FlushPersistentDebugLines(GetWorld());
 }

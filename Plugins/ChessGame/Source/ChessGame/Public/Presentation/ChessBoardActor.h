@@ -17,6 +17,8 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
+	virtual bool ShouldTickIfViewportsOnly() const override;
 
 public:	
 	// Config
@@ -34,6 +36,10 @@ public:
 	// Height offset for spawning pieces (e.g. if board has thickness)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Chess")
 	float PieceHeightOffset = 0.0f;
+
+	// Debug
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
+	bool bShowDebugGrid = false;
 
 	// State
 	UPROPERTY(BlueprintReadOnly, Category = "Chess")
@@ -86,10 +92,10 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// Blueprint Events
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(BlueprintNativeEvent)
 	void OnHighlightMoves(const TArray<FChessMove>& Moves);
 
-	UFUNCTION(BlueprintImplementableEvent)
+	UFUNCTION(BlueprintNativeEvent)
 	void OnClearHighlights();
 
 };

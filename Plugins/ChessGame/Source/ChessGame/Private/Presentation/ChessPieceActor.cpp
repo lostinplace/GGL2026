@@ -33,13 +33,11 @@ void AChessPieceActor::Init(int32 InPieceId, EPieceType InType, EPieceColor InCo
 
 void AChessPieceActor::UpdateLegalMoves(const UChessBoardState* Board)
 {
+	// ... existing logic ...
 	CachedMoves.Empty();
 	if (MoveRuleInstance && Board)
 	{
-		// Find my coord
-		// Helper from Board? Or pass it in? 
-		// For efficiency, caller should probably pass coords, but here we just have Board.
-		// Need to scan.
+		// ... existing logic ...
 		FBoardCoord MyCoord;
 		bool bFound = false;
 		for (int32 i = 0; i < 64; ++i)
@@ -55,7 +53,6 @@ void AChessPieceActor::UpdateLegalMoves(const UChessBoardState* Board)
 		if (bFound)
 		{
 			FPieceInstance MyInstance(PieceId, Type, Color);
-			// We might need to get the actual instance from Board to check 'HasMoved' status
 			if (const FPieceInstance* RealInstance = Board->GetPiece(PieceId))
 			{
 				MyInstance = *RealInstance;
@@ -63,5 +60,21 @@ void AChessPieceActor::UpdateLegalMoves(const UChessBoardState* Board)
 			
 			MoveRuleInstance->GenerateMoves(Board, MyCoord, MyInstance, CachedMoves);
 		}
+	}
+}
+
+void AChessPieceActor::OnSelectionChanged_Implementation(bool bSelected)
+{
+	if (bSelected)
+	{
+		// Visual pop up
+		SetActorRelativeScale3D(FVector(1.2f));
+		// Debug message
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, FString::Printf(TEXT("Selected Piece: %d"), PieceId));
+	}
+	else
+	{
+		// Reset
+		SetActorRelativeScale3D(FVector(1.0f));
 	}
 }
