@@ -75,6 +75,9 @@ public:
 	UFUNCTION()
 	void OnGameEnded(bool bIsDraw, EPieceColor Winner);
 
+	UFUNCTION()
+	void OnPieceMaskChanged(int32 PieceId, EPieceType NewMask);
+
 	// Visuals
 	void SyncVisuals();
 	void SpawnPieceActor(int32 PieceId, EPieceType Type, EPieceColor Color, FBoardCoord Coord);

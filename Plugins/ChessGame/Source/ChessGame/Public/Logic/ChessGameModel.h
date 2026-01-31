@@ -11,6 +11,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMoveApplied, const FChessMove&, M
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPieceCaptured, int32, PieceId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnChanged, EPieceColor, SideToMove);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGameEnded, bool, bIsDraw, EPieceColor, Winner);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPieceMaskChanged, int32, PieceId, EPieceType, NewMask);
 
 /**
  * The core game model. Orchestrates the game flow.
@@ -42,6 +43,9 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnGameEnded OnGameEnded;
 
+	UPROPERTY(BlueprintAssignable)
+	FOnPieceMaskChanged OnPieceMaskChanged;
+
 	// Configuration
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chess Configuration")
 	EChessInitMode InitMode = EChessInitMode::Standard;
@@ -58,6 +62,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void GetLegalMovesForCoord(FBoardCoord Coord, TArray<FChessMove>& OutMoves);
+
+	UFUNCTION(BlueprintCallable)
+	void SetPieceMask(int32 PieceId, EPieceType NewMask);
 
 protected:
 	void ApplyMoveInternal(const FChessMove& Move);

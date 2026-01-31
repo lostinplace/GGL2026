@@ -61,6 +61,7 @@ void AChessBoardActor::BeginPlay()
 	GameModel->OnMoveApplied.AddDynamic(this, &AChessBoardActor::OnMoveApplied);
 	GameModel->OnPieceCaptured.AddDynamic(this, &AChessBoardActor::OnPieceCaptured);
 	GameModel->OnGameEnded.AddDynamic(this, &AChessBoardActor::OnGameEnded);
+	GameModel->OnPieceMaskChanged.AddDynamic(this, &AChessBoardActor::OnPieceMaskChanged);
 
 	// Initial Sync
 	if (HasAuthority())
@@ -265,14 +266,47 @@ void AChessBoardActor::SyncVisuals()
 void AChessBoardActor::SpawnPieceActor(int32 PieceId, EPieceType Type, EPieceColor Color, FBoardCoord Coord)
 {
 	if (!StyleSet) return;
+	if (!GameModel || !GameModel->BoardState) return;
+
+	// Determine Visual Type based on Observer
+	EPieceType VisualType = Type;
 	
-	TSubclassOf<AChessPieceActor> Class = StyleSet->GetPieceClass(Color, Type);
+	// Get Observer (For Local Player). 
+	// In a real network game, we need to know "Who Am I".
+	// For MVP/Local testing, we can assume we are "White" or "Black" based on...
+	// Actually, this logic runs on ALL clients.
+	// We need GetLocalPlayer -> Subsystem -> Side?
+	// Or simply, we spawn based on "Who is viewing".
+	// BUT, if we spawn an Actor, everyone sees the same Actor Mesh unless we use 'OnlyOwnerSee' which is complex for board games.
+	// Better approach: The Piece Actor itself handles the visual deception based on Local Player Controller?
+	// OR: The Server replicates the "Visual Type" separately?
+	
+	// User Requirement: "to the owning player, the pice will look like it's real type... to the opposing player, a masked piece should always look like a rook"
+	// This means we need DYNAMIC visuals per client.
+	// Actors are replicated. 
+	
+	// APPROACH:
+	// 1. Pass the PieceInstance to the Actor.
+	// 2. The Actor in BeginPlay (and OnRep) checks Local Player Controller Team.
+	// 3. Sets Mesh accordingly.
+	
+	// For NOW, in SpawnPieceActor, we just pass the PieceID/Info. We interact with the Actor below.
+	
+	TSubclassOf<AChessPieceActor> Class = StyleSet->GetPieceClass(Color, Type); 
+	// PROBLEM: If we spawn the "Real" class, and the visual is "Pawn", but real is "Rook", 
+	// and if classes allow different logic/visuals, we might need a generic class.
+	// Assuming StyleSet returns same class (BP_ChessPiece) for all, just different meshes?
+	// If different classes, we have a problem swapping them locally.
+	
+	// Let's assume generic BP_ChessPiece_C is used, or they share logic.
+	// If the user uses unique BPs for Rook vs Pawn, we cannot easily swap "Visuals" without destroying actor.
+	
+	// MVP Fix: Spawn the "REAL" actor, but tell it to "Disguise" itself.
+	
 	if (Class)
 	{
 		FVector Loc = CoordToWorld(Coord);
 		FActorSpawnParameters Params;
-		// Keep relative rotation? Or enforce forward?
-		// Usually pieces face opponent.
 		FRotator Rot = FRotator::ZeroRotator;
 		if (Color == EPieceColor::Black) Rot.Yaw = 180.0f;
 
@@ -281,6 +315,30 @@ void AChessBoardActor::SpawnPieceActor(int32 PieceId, EPieceType Type, EPieceCol
 		{
 			NewPiece->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 			NewPiece->Init(PieceId, Type, Color);
+			
+			// Setup Masking
+			const FPieceInstance* Piece = GameModel->BoardState->Pieces.Find(PieceId);
+			if (Piece && Piece->MaskType != EPieceType::None)
+			{
+				// Determine Observer Side
+				EPieceColor ObserverSide = EPieceColor::White; // Default
+				
+				// In a real network setting, check UChessGameSubsystem or PC->PlayerState->Team
+				// For now, MVP assumes Standalone/Listening Server is White context or "God"
+				// But to TEST masking, we need to pretend we are the OPPONENT?
+				// If I am White, and I spawn a Black Piece with Mask, I (White) am the Observer.
+				// So ObserverSide = My Side.
+				
+				APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+				// MVP: Assume Player 0 is White.
+				
+				EPieceType VisType = Piece->GetVisualType(ObserverSide);
+				if (VisType != Type)
+				{
+					NewPiece->UpdateVisuals(StyleSet, VisType);
+				}
+			}
+
 			PieceActors.Add(PieceId, NewPiece);
 		}
 	}
@@ -351,6 +409,35 @@ void AChessBoardActor::OnGameEnded(bool bIsDraw, EPieceColor Winner)
 {
 	// Log or Show UI
 	// UE_LOG(LogTemp, Warning, TEXT("Game Over. Draw: %d, Winner: %d"), bIsDraw, (int32)Winner);
+}
+
+void AChessBoardActor::OnPieceMaskChanged(int32 PieceId, EPieceType NewMask)
+{
+	if (!GameModel || !GameModel->BoardState) return;
+
+	if (FPieceInstance* Piece = GameModel->BoardState->Pieces.Find(PieceId))
+	{
+		// Find Actor
+		if (AChessPieceActor** ActorPtr = PieceActors.Find(PieceId))
+		{
+			AChessPieceActor* Actor = *ActorPtr;
+			if (Actor)
+			{
+				// Determine Observer Side (MVP: White)
+				EPieceColor ObserverSide = EPieceColor::White;
+				APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0); 
+				
+				// Calculate Visual Type
+				EPieceType VisType = Piece->GetVisualType(ObserverSide);
+				
+				// Update Actor
+				Actor->UpdateVisuals(StyleSet, VisType);
+				
+				// Also notify actor of mask change (sound/fx)
+				Actor->OnMaskChanged(NewMask);
+			}
+		}
+	}
 }
 
 void AChessBoardActor::Server_TryMove_Implementation(FChessMove Move)

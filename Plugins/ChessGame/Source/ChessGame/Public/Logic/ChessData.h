@@ -39,6 +39,7 @@ enum class EChessInitMode : uint8
 	Standard,
 	Empty,
 	Test_KingsOnly,
+	Test_MaskedPawns,
 	Random960
 };
 
@@ -112,9 +113,28 @@ struct CHESSGAME_API FPieceInstance
 	UPROPERTY(BlueprintReadOnly)
 	bool bHasMoved = false;
 
+	UPROPERTY(BlueprintReadOnly)
+	EPieceType MaskType = EPieceType::None;
+
 	FPieceInstance() {}
 	FPieceInstance(int32 InId, EPieceType InType, EPieceColor InColor)
-		: PieceId(InId), Type(InType), Color(InColor), bHasMoved(false) {}
+		: PieceId(InId), Type(InType), Color(InColor), bHasMoved(false), MaskType(EPieceType::None) {}
+
+	EPieceType GetVisualType(EPieceColor ObserverColor) const
+	{
+		// Owner sees the TRUE type (for now, user can tune this)
+		if (Color == ObserverColor)
+		{
+			return Type;
+		}
+		// Opponent sees the MASK type if set
+		if (MaskType != EPieceType::None)
+		{
+			return MaskType;
+		}
+		// Default
+		return Type;
+	}
 };
 
 /**

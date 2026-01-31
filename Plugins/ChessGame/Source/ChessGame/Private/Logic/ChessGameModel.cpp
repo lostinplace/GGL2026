@@ -193,3 +193,15 @@ void UChessGameModel::ApplyMoveInternal(const FChessMove& Move)
 		}
 	}
 }
+
+void UChessGameModel::SetPieceMask(int32 PieceId, EPieceType NewMask)
+{
+	if (BoardState)
+	{
+		if (FPieceInstance* Piece = BoardState->Pieces.Find(PieceId))
+		{
+			Piece->MaskType = NewMask;
+			OnPieceMaskChanged.Broadcast(PieceId, NewMask);
+		}
+	}
+}

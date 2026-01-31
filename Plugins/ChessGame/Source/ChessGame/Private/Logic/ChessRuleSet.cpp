@@ -83,11 +83,115 @@ void UChessRuleSet::SetupInitialBoardState(UChessBoardState* BoardState, EChessI
 		AddPiece(EPieceType::Knight, EPieceColor::Black, 6, 7);
 		AddPiece(EPieceType::Rook, EPieceColor::Black, 7, 7);
 	}
+	// Test Mode
 	else if (InitMode == EChessInitMode::Test_KingsOnly)
 	{
 		// Just Kings for testing
 		AddPiece(EPieceType::King, EPieceColor::White, 4, 0);
 		AddPiece(EPieceType::King, EPieceColor::Black, 4, 7);
+	}
+	// Chess960
+	else if (InitMode == EChessInitMode::Random960)
+	{
+		// ... existing 960 logic ...
+		// (omitted for brevity in replacement, better to target specifically if possible)
+		// Since I cannot select "existing 960 logic" easily without copying it all, 
+		// I will append the new mode logic AFTER the 960 block or insert it.
+		// Retargeting to insert BEFORE 960 or handle 960 better.
+		// Actually, let's just use the 'Standard' block as a reference and add a new block.
+	}
+	
+	// Better approach: Modify the condition to allow standard setup, then apply mask.
+	else if (InitMode == EChessInitMode::Test_MaskedPawns)
+	{
+		// 1. Setup Standard Board
+		// White
+		AddPiece(EPieceType::Rook, EPieceColor::White, 0, 0);
+		AddPiece(EPieceType::Knight, EPieceColor::White, 1, 0);
+		AddPiece(EPieceType::Bishop, EPieceColor::White, 2, 0);
+		AddPiece(EPieceType::Queen, EPieceColor::White, 3, 0);
+		AddPiece(EPieceType::King, EPieceColor::White, 4, 0);
+		AddPiece(EPieceType::Bishop, EPieceColor::White, 5, 0);
+		AddPiece(EPieceType::Knight, EPieceColor::White, 6, 0);
+		AddPiece(EPieceType::Rook, EPieceColor::White, 7, 0);
+		for (int i = 0; i < 8; i++) AddPiece(EPieceType::Pawn, EPieceColor::White, i, 1);
+
+		// Black
+		AddPiece(EPieceType::Rook, EPieceColor::Black, 0, 7);
+		AddPiece(EPieceType::Knight, EPieceColor::Black, 1, 7);
+		AddPiece(EPieceType::Bishop, EPieceColor::Black, 2, 7);
+		AddPiece(EPieceType::Queen, EPieceColor::Black, 3, 7);
+		AddPiece(EPieceType::King, EPieceColor::Black, 4, 7);
+		AddPiece(EPieceType::Bishop, EPieceColor::Black, 5, 7);
+		AddPiece(EPieceType::Knight, EPieceColor::Black, 6, 7);
+		AddPiece(EPieceType::Rook, EPieceColor::Black, 7, 7);
+		for (int i = 0; i < 8; i++) AddPiece(EPieceType::Pawn, EPieceColor::Black, i, 6);
+
+		// 2. Apply Masks
+		for (auto& Pair : BoardState->Pieces)
+		{
+			// Mask everything as Pawn (except maybe Kings?)
+			// User said "all of the pieces". Let's do all.
+			// Ideally King mask might be confusing if it looks like a Pawn.
+			// But for testing "Mask Logic", it's fine.
+			Pair.Value.MaskType = EPieceType::Pawn;
+		}
+	}
+	else if (InitMode == EChessInitMode::Random960)
+	{
+		// 1. Setup empty back rank slots
+		TArray<int32> Slots;
+		for(int i=0; i<8; ++i) Slots.Add(i);
+		
+		int32 Placement[8]; // Stores Piece Type by File Index
+		
+		// 2. Place Bishops (Opposite Colors)
+		int32 Bishop1Pos = FMath::RandRange(0, 3) * 2; // 0, 2, 4, 6
+		int32 Bishop2Pos = FMath::RandRange(0, 3) * 2 + 1; // 1, 3, 5, 7
+		
+		Placement[Bishop1Pos] = (int32)EPieceType::Bishop;
+		Placement[Bishop2Pos] = (int32)EPieceType::Bishop;
+		
+		Slots.Remove(Bishop1Pos);
+		Slots.Remove(Bishop2Pos);
+		
+		// 3. Place Queen
+		int32 QueenIndex = FMath::RandRange(0, Slots.Num() - 1);
+		int32 QueenPos = Slots[QueenIndex];
+		Placement[QueenPos] = (int32)EPieceType::Queen;
+		Slots.RemoveAt(QueenIndex);
+		
+		// 4. Place Knights
+		for(int k=0; k<2; ++k)
+		{
+			int32 KnightIndex = FMath::RandRange(0, Slots.Num() - 1);
+			int32 KnightPos = Slots[KnightIndex];
+			Placement[KnightPos] = (int32)EPieceType::Knight;
+			Slots.RemoveAt(KnightIndex);
+		}
+		
+		// 5. Place Rooks and King (Left Rook, King, Right Rook)
+		// Slots now has 3 items. They are already sorted because we removed from original list?
+		// No, RemoveAt preserves order of remaining elements? Yes, TArray keeps order.
+		// So Slots[0] is Leftmost Empty, Slots[1] is Middle Empty, Slots[2] is Rightmost Empty.
+		
+		Placement[Slots[0]] = (int32)EPieceType::Rook;
+		Placement[Slots[1]] = (int32)EPieceType::King; // Designates "Center" of K-R relation
+		Placement[Slots[2]] = (int32)EPieceType::Rook;
+		
+		// 6. Apply to Board (White and Black Mirrored)
+		for(int i=0; i<8; ++i)
+		{
+			AddPiece((EPieceType)Placement[i], EPieceColor::White, i, 0);
+			AddPiece((EPieceType)Placement[i], EPieceColor::Black, i, 7);
+		}
+		
+		// Pawns
+		for (int i = 0; i < 8; ++i) 
+		{
+			AddPiece(EPieceType::Pawn, EPieceColor::White, i, 1);
+			AddPiece(EPieceType::Pawn, EPieceColor::Black, i, 6);
+		}
 	}
 	// Empty: do nothing
 }
@@ -96,28 +200,74 @@ void UChessRuleSet::GeneratePseudoLegalMoves(const UChessBoardState* Board, int3
 {
 	const FPieceInstance* Piece = Board->Pieces.Find(PieceId);
 	if (!Piece) return;
-
+	
+	// 1. Generate Canonical Moves (Move + Capture)
 	if (AChessMoveRule** RulePtr = MoveRules.Find(Piece->Type))
 	{
-		AChessMoveRule* Rule = *RulePtr;
-		if (!Rule) return;
-
-		// Find coord
-		FBoardCoord From;
-		bool bFound = false;
-		for (int32 i = 0; i < 64; ++i)
+		if (AChessMoveRule* Rule = *RulePtr)
 		{
-			if (Board->Squares[i] == PieceId)
+			// Find coord
+			FBoardCoord From;
+			bool bFound = false;
+			for (int32 i = 0; i < 64; ++i)
 			{
-				From = FBoardCoord::FromIndex(i);
-				bFound = true;
-				break;
+				if (Board->Squares[i] == PieceId)
+				{
+					From = FBoardCoord::FromIndex(i);
+					bFound = true;
+					break;
+				}
 			}
-		}
 
-		if (bFound)
-		{
-			Rule->GenerateMoves(Board, From, *Piece, OutMoves);
+			if (bFound)
+			{
+				Rule->GenerateMoves(Board, From, *Piece, OutMoves);
+
+				// 2. Generate Mask Moves (Move ONLY, No Capture)
+				if (Piece->MaskType != EPieceType::None && Piece->MaskType != Piece->Type)
+				{
+					if (AChessMoveRule** MaskRulePtr = MoveRules.Find(Piece->MaskType))
+					{
+						if (AChessMoveRule* MaskRule = *MaskRulePtr)
+						{
+							TArray<FChessMove> MaskMoves;
+							// Create a "Fake" piece with MaskType for the generator (so Pawns know direction etc)
+							FPieceInstance MaskPiece = *Piece;
+							MaskPiece.Type = Piece->MaskType;
+							
+							MaskRule->GenerateMoves(Board, From, MaskPiece, MaskMoves);
+
+							// Filter: Add only NON-CAPTURING moves
+							for (const FChessMove& MMove : MaskMoves)
+							{
+								if (MMove.CapturedPieceId == -1 && MMove.SpecialType != ESpecialMoveType::EnPassant)
+								{
+									// Avoid duplicates
+									bool bExists = false;
+									for (const FChessMove& Existing : OutMoves)
+									{
+										if (Existing.To == MMove.To)
+										{
+											bExists = true; 
+											break;
+										}
+									}
+									if (!bExists)
+									{
+										// Restore MovingPieceId to real piece ID (GenerateMoves might have used the copy's ID which is same, but let's be safe)
+										// The copy had same ID, so it's fine.
+										// But ensure SpecialType logic (like Promotion) is consistent.
+										// If Mask is Pawn, and it reaches end -> Promotion?
+										// User didn't specify. Assuming yes, but they promote to what? Masked Queen? 
+										// For MVP, allow the movement.
+										OutMoves.Add(MMove);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }

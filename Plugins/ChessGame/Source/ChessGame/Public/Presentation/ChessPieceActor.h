@@ -51,10 +51,19 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnPromoted(EPieceType NewType);
 
-	UFUNCTION(BlueprintNativeEvent)
+	UFUNCTION(BlueprintCallable, Category = "Chess")
+	void SetMask(EPieceType NewMask);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Chess")
+	void OnMaskChanged(EPieceType NewMask);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnSelectionChanged(bool bSelected);
 
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void UpdateVisuals(const class UChessPieceStyleSet* StyleSet, EPieceType VisualType);
+
 public:
-	void Init(int32 InPieceId, EPieceType InType, EPieceColor InColor);
+	virtual void Init(int32 InPieceId, EPieceType InType, EPieceColor InColor);
 
 };

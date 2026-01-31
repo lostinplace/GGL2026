@@ -1,7 +1,9 @@
 #include "Presentation/ChessPieceActor.h"
+#include "Presentation/ChessPieceStyleSet.h" // Added Include
 #include "Logic/ChessMoveRule.h"
 #include "Logic/ChessBoardState.h"
 #include "Presentation/SelectableChessPieceComponent.h"
+#include "Presentation/ChessBoardActor.h"
 
 AChessPieceActor::AChessPieceActor()
 {
@@ -11,6 +13,26 @@ AChessPieceActor::AChessPieceActor()
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
 	SelectionComponent = CreateDefaultSubobject<USelectableChessPieceComponent>(TEXT("SelectionComponent"));
+}
+
+void AChessPieceActor::UpdateVisuals_Implementation(const class UChessPieceStyleSet* StyleSet, EPieceType VisualType)
+{
+	// Default implementation does nothing. Blueprint can overwrite.
+	// UE_LOG(LogTemp, Verbose, TEXT("AChessPieceActor::UpdateVisuals_Implementation Called"));
+}
+
+void AChessPieceActor::SetMask(EPieceType NewMask)
+{
+	if (AActor* BoardActor = GetAttachParentActor())
+	{
+		if (AChessBoardActor* ChessBoard = Cast<AChessBoardActor>(BoardActor))
+		{
+			if (ChessBoard->GameModel)
+			{
+				ChessBoard->GameModel->SetPieceMask(PieceId, NewMask);
+			}
+		}
+	}
 }
 
 void AChessPieceActor::Init(int32 InPieceId, EPieceType InType, EPieceColor InColor)
