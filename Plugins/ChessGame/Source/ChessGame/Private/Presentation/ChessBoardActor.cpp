@@ -4,6 +4,7 @@
 #include "DrawDebugHelpers.h"
 #include "DrawDebugHelpers.h"
 #include "Logic/ChessGameSubsystem.h" // Include Subsystem
+#include "Presentation/ChessPlayerController.h"
 #include "Presentation/SelectableChessPieceComponent.h" // Required for Graveyard logic
 
 AChessBoardActor::AChessBoardActor()
@@ -222,8 +223,14 @@ void AChessBoardActor::HandleSquareClicked(FBoardCoord Coord)
 				TargetMove.PromotionType = EPieceType::Queen; // MVP
 			}
 
-			// Call Server RPC
-			Server_TryMove(TargetMove);
+			// Call Server RPC via PlayerController (Client owns PC, not Board)
+			if (APlayerController* LocalPC = UGameplayStatics::GetPlayerController(this, 0))
+			{
+				if (AChessPlayerController* ChessPC = Cast<AChessPlayerController>(LocalPC))
+				{
+					ChessPC->Server_SubmitMove(this, TargetMove);
+				}
+			}
 			
 			// Deselect immediately via Subsystem
 			Subsystem->ClearSelection();
@@ -534,8 +541,10 @@ void AChessBoardActor::OnPieceMaskChanged(int32 PieceId, EPieceType NewMask)
 	}
 }
 
-void AChessBoardActor::Server_TryMove_Implementation(FChessMove Move)
+void AChessBoardActor::ProcessMove(FChessMove Move)
 {
+	if (!HasAuthority()) return;
+
 	if (GameModel && GameModel->TryApplyMove(Move))
 	{
 		// Update Replicated State for late joiners
@@ -601,12 +610,39 @@ void AChessBoardActor::OnClearHighlights_Implementation()
 
 EPieceColor AChessBoardActor::GetObserverSide() const
 {
-	// For Hot-Seat Debugging: Observer is the Player whose turn it is.
+	// 1. Try to get Local Player Controller (Client's perspective)
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		if (AChessPlayerController* ChessPC = Cast<AChessPlayerController>(PC))
+		{
+			// If we have an assigned color, use it (Network/Local Multiplayer with assignment)
+			if (ChessPC->HasAssignedColor())
+			{
+				return ChessPC->GetAssignedColor();
+			}
+		}
+	}
+
+	// 2. Fallback for Hot-Seat / Testing (No assigned colors): Use SideToMove
 	if (GameModel && GameModel->BoardState)
 	{
 		return GameModel->BoardState->SideToMove;
 	}
 	return EPieceColor::White;
+}
+
+void AChessBoardActor::RefreshPieceVisuals()
+{
+	if (GameModel && GameModel->BoardState)
+	{
+		for (auto& Pair : GameModel->BoardState->Pieces)
+		{
+			if (AChessPieceActor** AP = PieceActors.Find(Pair.Key))
+			{
+				if (*AP) UpdatePieceVisuals(Pair.Value, *AP);
+			}
+		}
+	}
 }
 
 void AChessBoardActor::UpdatePieceVisuals(const FPieceInstance& Piece, AChessPieceActor* Actor)

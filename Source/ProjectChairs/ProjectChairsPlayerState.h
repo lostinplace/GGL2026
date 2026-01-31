@@ -6,10 +6,12 @@
 #include "GameFramework/PlayerState.h"
 #include "CardSystem/DeckConfigurationDataAsset.h"
 #include "CardSystem/CardObject.h"
+#include "Logic/ChessData.h"
 #include "ProjectChairsPlayerState.generated.h"
 
 /**
  * Custom PlayerState that manages the player's deck and hand of cards.
+ * Also stores the assigned chess color for multiplayer chess games.
  */
 UCLASS()
 class PROJECTCHAIRS_API AProjectChairsPlayerState : public APlayerState
@@ -18,6 +20,15 @@ class PROJECTCHAIRS_API AProjectChairsPlayerState : public APlayerState
 
 public:
 	AProjectChairsPlayerState();
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	// Chess Multiplayer
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Chess")
+	EPieceColor AssignedChessColor = EPieceColor::White;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Chess")
+	bool bHasAssignedColor = false;
 
 	virtual void BeginPlay() override;
 

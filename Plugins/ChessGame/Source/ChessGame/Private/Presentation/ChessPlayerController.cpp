@@ -2,8 +2,10 @@
 #include "Presentation/SelectableChessPieceComponent.h"
 
 #include "Presentation/ChessPieceActor.h"
+#include "Logic/ChessGameSubsystem.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerState.h"
 #include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -29,6 +31,41 @@ void AChessPlayerController::BeginPlay()
 			break;
 		}
 	}
+
+	// Wait for Color Assignment (Network Delay)
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
+	{
+		if (HasAssignedColor() && CurrentBoard)
+		{
+			CurrentBoard->RefreshPieceVisuals();
+			// We can stop checking? No, Timer is one-off or looping?
+			// Let's make it loop until success, then clear using member handle?
+			// For simplicity: Check once after delay, and maybe retry?
+			// Better: Retry every 0.1s until success or timeout (limit 5s).
+		}
+	}, 0.2f, false);
+	
+	// Better Re-try logic with delegate or looping
+	auto CheckColorLambda = [this, Handle = FTimerHandle()]() mutable
+	{
+		if (HasAssignedColor())
+		{
+			if (CurrentBoard) CurrentBoard->RefreshPieceVisuals();
+			// How to stop? Need Member Handle.
+			// MVP: Just delay 0.5s and 1.0s.
+		}
+	};
+	
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this](){
+		if(HasAssignedColor() && CurrentBoard) CurrentBoard->RefreshPieceVisuals();
+	}, 0.5f, false);
+	
+	// Also try at 1.5s just in case
+	FTimerHandle TimerHandle2;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle2, [this](){
+		if(HasAssignedColor() && CurrentBoard) CurrentBoard->RefreshPieceVisuals();
+	}, 1.5f, false);
 }
 
 void AChessPlayerController::SetupInputComponent()
@@ -50,9 +87,16 @@ void AChessPlayerController::SetupInputComponent()
 
 void AChessPlayerController::OnMouseClick()
 {
+	// Turn validation for multiplayer
+	if (!CanInteract())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ChessController] Not your turn! Waiting for opponent."));
+		return;
+	}
+
 	FVector HitLoc;
 	AChessBoardActor* HitBoard = FindBoardUnderCursor(HitLoc);
-	
+
 	if (HitBoard)
 	{
 		// Convert World Hit to Coord
@@ -148,4 +192,96 @@ AChessBoardActor* AChessPlayerController::FindBoardUnderCursor(FVector& OutHitLo
 	}
 	
 	return nullptr;
+}
+
+bool AChessPlayerController::CanInteract() const
+{
+	// If no assigned color (single player mode), always allow interaction
+	if (!HasAssignedColor())
+	{
+		return true;
+	}
+
+	// Get the current side to move from the subsystem
+	UGameInstance* GI = GetGameInstance();
+	if (!GI)
+	{
+		return true;
+	}
+
+	UChessGameSubsystem* ChessSubsystem = GI->GetSubsystem<UChessGameSubsystem>();
+	if (!ChessSubsystem)
+	{
+		return true;
+	}
+
+	// Only allow interaction if it's this player's turn
+	EPieceColor SideToMove = ChessSubsystem->GetSideToMove();
+	EPieceColor MyColor = GetAssignedColor();
+
+	return SideToMove == MyColor;
+}
+
+EPieceColor AChessPlayerController::GetAssignedColor() const
+{
+	// Check PlayerState for assigned color
+	// PlayerState needs to have AssignedChessColor and bHasAssignedColor properties
+	if (PlayerState)
+	{
+		// Use reflection to check if the PlayerState has these properties
+		// This avoids a hard dependency on ProjectChairsPlayerState in the plugin
+		UFunction* GetColorFunc = PlayerState->GetClass()->FindFunctionByName(TEXT("GetAssignedChessColor"));
+		if (GetColorFunc)
+		{
+			// Has the function, call it
+			struct { EPieceColor ReturnValue; } Params;
+			PlayerState->ProcessEvent(GetColorFunc, &Params);
+			return Params.ReturnValue;
+		}
+
+		// Fallback: Try to read the property directly via reflection
+		FProperty* ColorProp = PlayerState->GetClass()->FindPropertyByName(TEXT("AssignedChessColor"));
+		if (ColorProp)
+		{
+			EPieceColor* ColorPtr = ColorProp->ContainerPtrToValuePtr<EPieceColor>(PlayerState);
+			if (ColorPtr)
+			{
+				return *ColorPtr;
+			}
+		}
+	}
+
+	return EPieceColor::White;
+}
+
+bool AChessPlayerController::HasAssignedColor() const
+{
+	if (PlayerState)
+	{
+		// Check via reflection to avoid hard dependency
+		FProperty* HasColorProp = PlayerState->GetClass()->FindPropertyByName(TEXT("bHasAssignedColor"));
+		if (HasColorProp)
+		{
+			bool* HasColorPtr = HasColorProp->ContainerPtrToValuePtr<bool>(PlayerState);
+			if (HasColorPtr)
+			{
+				return *HasColorPtr;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool AChessPlayerController::Server_SubmitMove_Validate(AChessBoardActor* Board, FChessMove Move)
+{
+	return Board != nullptr;
+}
+
+void AChessPlayerController::Server_SubmitMove_Implementation(AChessBoardActor* Board, FChessMove Move)
+{
+	if (Board)
+	{
+		Board->ProcessMove(Move);
+	}
 }
