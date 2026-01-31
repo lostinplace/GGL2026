@@ -1,0 +1,150 @@
+<<<<<<< HEAD
+#include "Presentation/ChessPieceActor.h"
+#include "Logic/ChessMoveRule.h"
+#include "Logic/ChessBoardState.h"
+
+AChessPieceActor::AChessPieceActor()
+{
+	PrimaryActorTick.bCanEverTick = false;
+	
+	// Create a root component so it can be placed
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+}
+
+void AChessPieceActor::Init(int32 InPieceId, EPieceType InType, EPieceColor InColor)
+{
+	PieceId = InPieceId;
+	Type = InType;
+	Color = InColor;
+
+	// Spawn Rule if class is set
+	if (MoveRuleClass)
+	{
+		FActorSpawnParameters Params;
+		Params.Owner = this;
+		MoveRuleInstance = GetWorld()->SpawnActor<AChessMoveRule>(MoveRuleClass, Params);
+		if (MoveRuleInstance)
+		{
+			MoveRuleInstance->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+		}
+	}
+
+	OnInitialized(PieceId, Type, Color);
+}
+
+void AChessPieceActor::UpdateLegalMoves(const UChessBoardState* Board)
+{
+	// ... existing logic ...
+	CachedMoves.Empty();
+	if (MoveRuleInstance && Board)
+	{
+		// ... existing logic ...
+		FBoardCoord MyCoord;
+		bool bFound = false;
+		for (int32 i = 0; i < 64; ++i)
+		{
+			if (Board->Squares[i] == PieceId)
+			{
+				MyCoord = FBoardCoord::FromIndex(i);
+				bFound = true;
+				break;
+			}
+		}
+
+		if (bFound)
+		{
+			FPieceInstance MyInstance(PieceId, Type, Color);
+			if (const FPieceInstance* RealInstance = Board->GetPiece(PieceId))
+			{
+				MyInstance = *RealInstance;
+			}
+			
+			MoveRuleInstance->GenerateMoves(Board, MyCoord, MyInstance, CachedMoves);
+		}
+	}
+}
+
+void AChessPieceActor::OnSelectionChanged_Implementation(bool bSelected)
+{
+	if (bSelected)
+	{
+		// Visual pop up
+		SetActorRelativeScale3D(FVector(1.2f));
+		// Debug message
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, FString::Printf(TEXT("Selected Piece: %d"), PieceId));
+	}
+	else
+	{
+		// Reset
+		SetActorRelativeScale3D(FVector(1.0f));
+	}
+}
+=======
+#include "Presentation/ChessPieceActor.h"
+#include "Logic/ChessMoveRule.h"
+#include "Logic/ChessBoardState.h"
+
+AChessPieceActor::AChessPieceActor()
+{
+	PrimaryActorTick.bCanEverTick = false;
+	
+	// Create a root component so it can be placed
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+}
+
+void AChessPieceActor::Init(int32 InPieceId, EPieceType InType, EPieceColor InColor)
+{
+	PieceId = InPieceId;
+	Type = InType;
+	Color = InColor;
+
+	// Spawn Rule if class is set
+	if (MoveRuleClass)
+	{
+		FActorSpawnParameters Params;
+		Params.Owner = this;
+		MoveRuleInstance = GetWorld()->SpawnActor<AChessMoveRule>(MoveRuleClass, Params);
+		if (MoveRuleInstance)
+		{
+			MoveRuleInstance->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+		}
+	}
+
+	OnInitialized(PieceId, Type, Color);
+}
+
+void AChessPieceActor::UpdateLegalMoves(const UChessBoardState* Board)
+{
+	CachedMoves.Empty();
+	if (MoveRuleInstance && Board)
+	{
+		// Find my coord
+		// Helper from Board? Or pass it in? 
+		// For efficiency, caller should probably pass coords, but here we just have Board.
+		// Need to scan.
+		FBoardCoord MyCoord;
+		bool bFound = false;
+		for (int32 i = 0; i < 64; ++i)
+		{
+			if (Board->Squares[i] == PieceId)
+			{
+				MyCoord = FBoardCoord::FromIndex(i);
+				bFound = true;
+				break;
+			}
+		}
+
+		if (bFound)
+		{
+			FPieceInstance MyInstance(PieceId, Type, Color);
+			// We might need to get the actual instance from Board to check 'HasMoved' status
+			if (const FPieceInstance* RealInstance = Board->GetPiece(PieceId))
+			{
+				MyInstance = *RealInstance;
+			}
+			
+			MoveRuleInstance->GenerateMoves(Board, MyCoord, MyInstance, CachedMoves);
+		}
+	}
+}
+>>>>>>> e79b9dc6ff2b90dd18b34fa3ae5c47946c22d7ee
