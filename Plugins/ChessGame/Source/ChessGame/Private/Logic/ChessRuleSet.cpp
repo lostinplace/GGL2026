@@ -49,7 +49,7 @@ void UChessRuleSet::Initialize(UObject* WorldContextObject)
 	}
 }
 
-void UChessRuleSet::SetupInitialBoardState(UChessBoardState* BoardState)
+void UChessRuleSet::SetupInitialBoardState(UChessBoardState* BoardState, EChessInitMode InitMode)
 {
 	BoardState->InitializeEmpty();
 
@@ -59,27 +59,37 @@ void UChessRuleSet::SetupInitialBoardState(UChessBoardState* BoardState)
 		BoardState->AddPiece(NextId++, Type, Color, FBoardCoord(File, Rank));
 	};
 
-	// White Pieces (Rank 0 and 1)
-	for (int i = 0; i < 8; ++i) AddPiece(EPieceType::Pawn, EPieceColor::White, i, 1);
-	AddPiece(EPieceType::Rook, EPieceColor::White, 0, 0);
-	AddPiece(EPieceType::Knight, EPieceColor::White, 1, 0);
-	AddPiece(EPieceType::Bishop, EPieceColor::White, 2, 0);
-	AddPiece(EPieceType::Queen, EPieceColor::White, 3, 0);
-	AddPiece(EPieceType::King, EPieceColor::White, 4, 0);
-	AddPiece(EPieceType::Bishop, EPieceColor::White, 5, 0);
-	AddPiece(EPieceType::Knight, EPieceColor::White, 6, 0);
-	AddPiece(EPieceType::Rook, EPieceColor::White, 7, 0);
+	if (InitMode == EChessInitMode::Standard)
+	{
+		// White Pieces (Rank 0 and 1)
+		for (int i = 0; i < 8; ++i) AddPiece(EPieceType::Pawn, EPieceColor::White, i, 1);
+		AddPiece(EPieceType::Rook, EPieceColor::White, 0, 0);
+		AddPiece(EPieceType::Knight, EPieceColor::White, 1, 0);
+		AddPiece(EPieceType::Bishop, EPieceColor::White, 2, 0);
+		AddPiece(EPieceType::Queen, EPieceColor::White, 3, 0);
+		AddPiece(EPieceType::King, EPieceColor::White, 4, 0);
+		AddPiece(EPieceType::Bishop, EPieceColor::White, 5, 0);
+		AddPiece(EPieceType::Knight, EPieceColor::White, 6, 0);
+		AddPiece(EPieceType::Rook, EPieceColor::White, 7, 0);
 
-	// Black Pieces (Rank 7 and 6)
-	for (int i = 0; i < 8; ++i) AddPiece(EPieceType::Pawn, EPieceColor::Black, i, 6);
-	AddPiece(EPieceType::Rook, EPieceColor::Black, 0, 7);
-	AddPiece(EPieceType::Knight, EPieceColor::Black, 1, 7);
-	AddPiece(EPieceType::Bishop, EPieceColor::Black, 2, 7);
-	AddPiece(EPieceType::Queen, EPieceColor::Black, 3, 7);
-	AddPiece(EPieceType::King, EPieceColor::Black, 4, 7);
-	AddPiece(EPieceType::Bishop, EPieceColor::Black, 5, 7);
-	AddPiece(EPieceType::Knight, EPieceColor::Black, 6, 7);
-	AddPiece(EPieceType::Rook, EPieceColor::Black, 7, 7);
+		// Black Pieces (Rank 7 and 6)
+		for (int i = 0; i < 8; ++i) AddPiece(EPieceType::Pawn, EPieceColor::Black, i, 6);
+		AddPiece(EPieceType::Rook, EPieceColor::Black, 0, 7);
+		AddPiece(EPieceType::Knight, EPieceColor::Black, 1, 7);
+		AddPiece(EPieceType::Bishop, EPieceColor::Black, 2, 7);
+		AddPiece(EPieceType::Queen, EPieceColor::Black, 3, 7);
+		AddPiece(EPieceType::King, EPieceColor::Black, 4, 7);
+		AddPiece(EPieceType::Bishop, EPieceColor::Black, 5, 7);
+		AddPiece(EPieceType::Knight, EPieceColor::Black, 6, 7);
+		AddPiece(EPieceType::Rook, EPieceColor::Black, 7, 7);
+	}
+	else if (InitMode == EChessInitMode::Test_KingsOnly)
+	{
+		// Just Kings for testing
+		AddPiece(EPieceType::King, EPieceColor::White, 4, 0);
+		AddPiece(EPieceType::King, EPieceColor::Black, 4, 7);
+	}
+	// Empty: do nothing
 }
 
 void UChessRuleSet::GeneratePseudoLegalMoves(const UChessBoardState* Board, int32 PieceId, TArray<FChessMove>& OutMoves)

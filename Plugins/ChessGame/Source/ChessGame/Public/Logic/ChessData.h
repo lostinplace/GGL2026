@@ -33,6 +33,15 @@ enum class ESpecialMoveType : uint8
 	EnPassant
 };
 
+UENUM(BlueprintType)
+enum class EChessInitMode : uint8
+{
+	Standard,
+	Empty,
+	Test_KingsOnly,
+	Random960
+};
+
 /**
  * Represents a coordinate on the chess board (0-7, 0-7)
  */

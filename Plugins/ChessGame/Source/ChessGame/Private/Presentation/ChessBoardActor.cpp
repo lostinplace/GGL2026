@@ -2,13 +2,14 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "DrawDebugHelpers.h"
+#include "Logic/ChessGameSubsystem.h" // Include Subsystem
 
 AChessBoardActor::AChessBoardActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
-	SelectedCoord = FBoardCoord(-1, -1);
+	// SelectedCoord removed
 }
 
 void AChessBoardActor::Tick(float DeltaTime)
@@ -46,7 +47,15 @@ void AChessBoardActor::BeginPlay()
 
 	// Initialize Model
 	GameModel = NewObject<UChessGameModel>(this);
+	GameModel->InitMode = InitMode; // Pass configuration
 	GameModel->InitializeGame();
+
+	// Register with Subsystem
+	if (UChessGameSubsystem* Subsystem = GetGameInstance()->GetSubsystem<UChessGameSubsystem>())
+	{
+		Subsystem->RegisterGame(GameModel);
+		Subsystem->OnSelectionUpdated.AddDynamic(this, &AChessBoardActor::OnSubsystemSelectionChanged);
+	}
 
 	// Bind Events
 	GameModel->OnMoveApplied.AddDynamic(this, &AChessBoardActor::OnMoveApplied);
@@ -68,23 +77,6 @@ void AChessBoardActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(AChessBoardActor, ReplicatedState);
 }
 
-FVector AChessBoardActor::CoordToWorld(FBoardCoord Coord) const
-{
-	float OffsetX = SquareSize * 0.5f;
-	float OffsetY = SquareSize * 0.5f;
-
-	if (bCenterBoard)
-	{
-		// Center is (0,0). Board width is 8 * Size. Corner A1 starts at -4 * Size.
-		OffsetX -= SquareSize * 4.0f;
-		OffsetY -= SquareSize * 4.0f;
-	}
-
-	float X = Coord.File * SquareSize + OffsetX;
-	float Y = Coord.Rank * SquareSize + OffsetY;
-	return GetActorTransform().TransformPosition(FVector(X, Y, PieceHeightOffset));
-}
-
 FBoardCoord AChessBoardActor::WorldToCoord(FVector WorldLoc) const
 {
 	FVector LocalLoc = GetActorTransform().InverseTransformPosition(WorldLoc);
@@ -102,32 +94,77 @@ FBoardCoord AChessBoardActor::WorldToCoord(FVector WorldLoc) const
 	return FBoardCoord(File, Rank);
 }
 
+void AChessBoardActor::OnSubsystemSelectionChanged(FBoardCoord NewCoord)
+{
+	// Logic to update visuals based on global selection
+	
+	// 1. Clear previous highlights
+	OnClearHighlights();
+
+	// 2. Notify all pieces (Deselect all first? Or keep track of last selected?)
+	// Simplest: Iterate all piece actors and set selected = false, then set new one true.
+	// Optimization: Subsystem could pass "OldCoord", but we only get NewCoord here.
+	// Let's scan.
+	for (auto& Pair : PieceActors)
+	{
+		if (Pair.Value) Pair.Value->OnSelectionChanged(false);
+	}
+
+	// 3. If Valid, Select and Highlight
+	if (NewCoord.IsValid())
+	{
+		int32 PieceId = GameModel->BoardState->GetPieceIdAt(NewCoord);
+		if (AChessPieceActor** PA = PieceActors.Find(PieceId))
+		{
+			if (*PA) (*PA)->OnSelectionChanged(true);
+		}
+
+		// Highlight Moves
+		TArray<FChessMove> LegalMoves;
+		GameModel->GetLegalMovesForCoord(NewCoord, LegalMoves);
+
+		UE_LOG(LogTemp, Warning, TEXT("[ChessBoard] Selection Changed to %d,%d. Found %d Legal Moves."), NewCoord.File, NewCoord.Rank, LegalMoves.Num());
+		
+		OnHighlightMoves(LegalMoves);
+	}
+}
+
+FVector AChessBoardActor::CoordToWorld(const FBoardCoord Coord) const
+{
+	float OffsetX = SquareSize * 0.5f;
+	float OffsetY = SquareSize * 0.5f;
+
+	if (bCenterBoard)
+	{
+		// Center is (0,0). Board width is 8 * Size. Corner A1 starts at -4 * Size.
+		OffsetX -= SquareSize * 4.0f;
+		OffsetY -= SquareSize * 4.0f;
+	}
+
+	float X = Coord.File * SquareSize + OffsetX;
+	float Y = Coord.Rank * SquareSize + OffsetY;
+	return GetActorTransform().TransformPosition(FVector(X, Y, PieceHeightOffset));
+}
+
 void AChessBoardActor::HandleSquareClicked(FBoardCoord Coord)
 {
 	if (!Coord.IsValid()) return;
 
+	UChessGameSubsystem* Subsystem = GetGameInstance()->GetSubsystem<UChessGameSubsystem>();
+	if (!Subsystem) return;
+
+	FBoardCoord CurrentSelection = Subsystem->CurrentSelectedCoord;
+
 	// Check if we selected a piece or a target
 	int32 ClickedPieceId = GameModel->BoardState->GetPieceIdAt(Coord);
+	UE_LOG(LogTemp, Warning, TEXT("[ChessBoard] Clicked Coord: %d,%d -> PieceID: %d"), Coord.File, Coord.Rank, ClickedPieceId);
 	
-	// If we have a selection, try to move to clicked square
-	// Helper to notify piece selection
-	auto NotifySelection = [&](FBoardCoord Coord, bool bSelect) {
-		if (!Coord.IsValid()) return;
-		int32 PId = GameModel->BoardState->GetPieceIdAt(Coord);
-		if (AChessPieceActor** PA = PieceActors.Find(PId))
-		{
-			if (*PA) (*PA)->OnSelectionChanged(bSelect);
-		}
-	};
-
-	if (SelectedCoord.IsValid())
+	if (CurrentSelection.IsValid())
 	{
 		// Check if we clicked the same square (deselect)
-		if (SelectedCoord == Coord)
+		if (CurrentSelection == Coord)
 		{
-			NotifySelection(SelectedCoord, false);
-			SelectedCoord = FBoardCoord(-1, -1);
-			OnClearHighlights();
+			Subsystem->ClearSelection();
 			return;
 		}
 
@@ -136,7 +173,7 @@ void AChessBoardActor::HandleSquareClicked(FBoardCoord Coord)
 		
 		// Build a move. We need to find if there is a legal move from Selected to Coord.
 		TArray<FChessMove> LegalMoves;
-		GameModel->GetLegalMovesForCoord(SelectedCoord, LegalMoves);
+		GameModel->GetLegalMovesForCoord(CurrentSelection, LegalMoves);
 
 		FChessMove TargetMove;
 		bool bIsLegal = false;
@@ -155,18 +192,14 @@ void AChessBoardActor::HandleSquareClicked(FBoardCoord Coord)
 			// Promotion UI Check
 			if (TargetMove.SpecialType == ESpecialMoveType::Promotion)
 			{
-				// Simplest MVP: Auto-promote to Queen
-				TargetMove.PromotionType = EPieceType::Queen;
-				// TODO: Logic to ask UI
+				TargetMove.PromotionType = EPieceType::Queen; // MVP
 			}
 
 			// Call Server RPC
 			Server_TryMove(TargetMove);
 			
-			// Deselect immediately
-			NotifySelection(SelectedCoord, false);
-			SelectedCoord = FBoardCoord(-1, -1);
-			OnClearHighlights();
+			// Deselect immediately via Subsystem
+			Subsystem->ClearSelection();
 			return;
 		}
 		
@@ -177,28 +210,18 @@ void AChessBoardActor::HandleSquareClicked(FBoardCoord Coord)
 			if (ClickedPiece && ClickedPiece->Color == GameModel->BoardState->SideToMove)
 			{
 				// Switch selection
-				NotifySelection(SelectedCoord, false);
-				SelectedCoord = Coord;
-				NotifySelection(SelectedCoord, true);
-				
-				OnClearHighlights();
-				GameModel->GetLegalMovesForCoord(SelectedCoord, LegalMoves);
-				OnHighlightMoves(LegalMoves);
+				Subsystem->SetSelectedCoord(Coord);
 			}
 			else
 			{
 				// Clicked empty or enemy, but not a valid move -> Deselect
-				NotifySelection(SelectedCoord, false);
-				SelectedCoord = FBoardCoord(-1, -1);
-				OnClearHighlights();
+				Subsystem->ClearSelection();
 			}
 		}
 		else
 		{
 			// Clicked empty space invalid -> Deselect
-			NotifySelection(SelectedCoord, false);
-			SelectedCoord = FBoardCoord(-1, -1);
-			OnClearHighlights();
+			Subsystem->ClearSelection();
 		}
 	}
 	else
@@ -209,12 +232,7 @@ void AChessBoardActor::HandleSquareClicked(FBoardCoord Coord)
 			const FPieceInstance* ClickedPiece = GameModel->BoardState->GetPiece(ClickedPieceId);
 			if (ClickedPiece && ClickedPiece->Color == GameModel->BoardState->SideToMove)
 			{
-				SelectedCoord = Coord;
-				NotifySelection(SelectedCoord, true);
-				
-				TArray<FChessMove> LegalMoves;
-				GameModel->GetLegalMovesForCoord(SelectedCoord, LegalMoves);
-				OnHighlightMoves(LegalMoves);
+				Subsystem->SetSelectedCoord(Coord);
 			}
 		}
 	}
@@ -373,6 +391,8 @@ void AChessBoardActor::OnRep_ReplicatedState()
 
 void AChessBoardActor::OnHighlightMoves_Implementation(const TArray<FChessMove>& Moves)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[ChessBoard] Drawing Highlights for %d Moves"), Moves.Num());
+
 	// Default Debug Implementation
 	for (const FChessMove& Move : Moves)
 	{

@@ -41,6 +41,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
 	bool bShowDebugGrid = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chess")
+	EChessInitMode InitMode = EChessInitMode::Standard;
+
 	// State
 	UPROPERTY(BlueprintReadOnly, Category = "Chess")
 	UChessGameModel* GameModel;
@@ -48,9 +51,9 @@ public:
 	UPROPERTY()
 	TMap<int32, AChessPieceActor*> PieceActors;
 
-	// Selection
-	UPROPERTY(BlueprintReadOnly)
-	FBoardCoord SelectedCoord;
+	// Subsystem Integration
+	UFUNCTION()
+	void OnSubsystemSelectionChanged(FBoardCoord NewCoord);
 
 	// Helpers
 	UFUNCTION(BlueprintCallable)
@@ -90,6 +93,7 @@ public:
 	void OnRep_ReplicatedState();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 
 	// Blueprint Events
 	UFUNCTION(BlueprintNativeEvent)

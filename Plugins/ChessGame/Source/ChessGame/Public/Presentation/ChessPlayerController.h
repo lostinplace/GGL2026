@@ -22,6 +22,10 @@ protected:
 
 	// Actions
 	void OnMouseClick();
+	
+	// Enhanced Input
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	class UInputAction* ClickAction;
 
 public:
 	// The board we are currently interacting with

@@ -1,9 +1,12 @@
 #include "Presentation/ChessPlayerController.h"
+#include "Presentation/SelectableChessPieceComponent.h"
 
 #include "Presentation/ChessPieceActor.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "EngineUtils.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
 
 AChessPlayerController::AChessPlayerController()
 {
@@ -32,8 +35,17 @@ void AChessPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	InputComponent->BindAction("LeftClick", IE_Pressed, this, &AChessPlayerController::OnMouseClick);
-	// We can also bind "Touch" for mobile
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
+	{
+		if (ClickAction)
+		{
+			EnhancedInputComponent->BindAction(ClickAction, ETriggerEvent::Started, this, &AChessPlayerController::OnMouseClick);
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ChessPlayerController: InputComponent is not EnhancedInputComponent. Check Project Settings -> Input -> Default Classes."));
+	}
 }
 
 void AChessPlayerController::OnMouseClick()
@@ -46,26 +58,42 @@ void AChessPlayerController::OnMouseClick()
 		// Convert World Hit to Coord
 		FBoardCoord Coord = HitBoard->WorldToCoord(HitLoc);
 		
+		UE_LOG(LogTemp, Warning, TEXT("[ChessController] Board Found: %s. HitLoc: %s. Coord: %d, %d"), *HitBoard->GetName(), *HitLoc.ToString(), Coord.File, Coord.Rank);
+
 		// If valid, interact
-		if (Coord.IsValid()) // WorldToCoord might return invalid if we check bounds, but currently it just divides
+		if (Coord.IsValid()) 
 		{
-			// Optional: Check bounds manually if WorldToCoord doesn't
+			// Check logic
 			if (Coord.File >= 0 && Coord.File <= 7 && Coord.Rank >= 0 && Coord.Rank <= 7)
 			{
 				HitBoard->HandleSquareClicked(Coord);
 			}
 			else
 			{
-				// Clicked outside grid but on board actor components?
-				// Deselect?
+				UE_LOG(LogTemp, Warning, TEXT("[ChessController] Coord out of bounds: %d, %d"), Coord.File, Coord.Rank);
 				HitBoard->HandleSquareClicked(FBoardCoord(-1, -1));
 			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[ChessController] Invalid Coord calculated from HitLoc."));
 		}
 	}
 	else
 	{
-		// Clicked nothing / void
-		// If we define "Deselect on void click" logic:
+		UE_LOG(LogTemp, Warning, TEXT("[ChessController] No Board Found under cursor."));
+		
+		// Debug what we DID hit
+		FHitResult Hit;
+		if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[ChessController] Hit Actor: %s"), *GetNameSafe(Hit.GetActor()));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[ChessController] No Hit Result at all."));
+		}
+
 		if (CurrentBoard)
 		{
 			CurrentBoard->HandleSquareClicked(FBoardCoord(-1, -1));
@@ -82,47 +110,41 @@ AChessBoardActor* AChessPlayerController::FindBoardUnderCursor(FVector& OutHitLo
 	{
 		OutHitLocation = Hit.Location;
 		
-		// Did we hit the board directly?
+		// 1. Prioritize "Selectable" components
+		// If we hit an actor that has this component, it's a piece we can interact with.
+		if (USelectableChessPieceComponent* Selectable = USelectableChessPieceComponent::FindSelectableComponent(Hit.GetActor()))
+		{
+			// The component is on the actor, but we need the Board.
+			// Assumption: The Actor *is* the ChessPieceActor or related.
+			if (AChessPieceActor* Piece = Cast<AChessPieceActor>(Hit.GetActor()))
+			{
+				if (Piece->GetAttachParentActor())
+				{
+					if (AChessBoardActor* Board = Cast<AChessBoardActor>(Piece->GetAttachParentActor()))
+					{
+						return Board;
+					}
+				}
+			}
+		}
+
+		// 2. Direct Board Hit
 		if (AChessBoardActor* Board = Cast<AChessBoardActor>(Hit.GetActor()))
 		{
 			return Board;
 		}
 		
-		// Did we hit a piece?
+		// 3. Fallback: Hit a piece (Actor) directly (legacy support or if Component search fails but cast works)
 		if (AChessPieceActor* Piece = Cast<AChessPieceActor>(Hit.GetActor()))
 		{
-			// Return its owner (the board) logic? 
-			// Piece isn't usually owned by Board in Scene Hierarchy unless attached.
-			// Currently we AttachToActor in SpawnPieceActor. So GetOwner should work.
-			// Or GetAttachParentActor.
 			if (Piece->GetAttachParentActor())
 			{
 				if (AChessBoardActor* Board = Cast<AChessBoardActor>(Piece->GetAttachParentActor()))
 				{
-					// If we hit a piece, the "Location" is on the piece surface, which might be high up (Z).
-					// We need the board-plane location to determine the square.
-					// Ideally, we raycast against the BOARD PLANE, ignoring the piece for coordinates.
-					// BUT, we know which piece it is.
-					
-					// Alternative: Piece->PieceId -> Board->State->GetSquareOfPiece -> Coord
-					// Much more accurate than raycasting against a mesh.
-					
-					// Let's rely on logic for piece hits.
-					
-					// However, the caller expects a Board + Location to convert.
-					// If we return Board, the caller will convert "Piece Surface Location" to Coord.
-					// This works IF WorldToCoord handles Z (it ignores Z usually).
-					
-					// But if we hit the top of a tall piece, X/Y might be correct.
-					
 					return Board;
 				}
 			}
 		}
-		
-		// Did we hit the Board Mesh (which might be a child component / attached)?
-		// If the user made a separate actor for the table?
-		// We only support direct Board Actor hits for now.
 	}
 	
 	return nullptr;

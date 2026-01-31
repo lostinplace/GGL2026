@@ -42,6 +42,10 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnGameEnded OnGameEnded;
 
+	// Configuration
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chess Configuration")
+	EChessInitMode InitMode = EChessInitMode::Standard;
+
 	// API
 	UFUNCTION(BlueprintCallable)
 	void InitializeGame();

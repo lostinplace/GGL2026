@@ -9,7 +9,7 @@ void UChessGameModel::InitializeGame()
 	BoardState = NewObject<UChessBoardState>(this);
 	RuleSet = NewObject<UChessRuleSet>(this);
 	RuleSet->Initialize(this);
-	RuleSet->SetupInitialBoardState(BoardState);
+	RuleSet->SetupInitialBoardState(BoardState, InitMode);
 
 	OnTurnChanged.Broadcast(BoardState->SideToMove);
 }

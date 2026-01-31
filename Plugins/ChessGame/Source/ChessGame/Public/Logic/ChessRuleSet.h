@@ -23,7 +23,7 @@ public:
 
 	// Setup
 	UFUNCTION(BlueprintCallable)
-	void SetupInitialBoardState(UChessBoardState* BoardState);
+	void SetupInitialBoardState(UChessBoardState* BoardState, EChessInitMode InitMode = EChessInitMode::Standard);
 
 	// Move Generation
 	UFUNCTION(BlueprintCallable)

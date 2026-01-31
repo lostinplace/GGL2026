@@ -1,6 +1,7 @@
 #include "Presentation/ChessPieceActor.h"
 #include "Logic/ChessMoveRule.h"
 #include "Logic/ChessBoardState.h"
+#include "Presentation/SelectableChessPieceComponent.h"
 
 AChessPieceActor::AChessPieceActor()
 {
@@ -8,6 +9,8 @@ AChessPieceActor::AChessPieceActor()
 	
 	// Create a root component so it can be placed
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+
+	SelectionComponent = CreateDefaultSubobject<USelectableChessPieceComponent>(TEXT("SelectionComponent"));
 }
 
 void AChessPieceActor::Init(int32 InPieceId, EPieceType InType, EPieceColor InColor)
@@ -65,6 +68,12 @@ void AChessPieceActor::UpdateLegalMoves(const UChessBoardState* Board)
 
 void AChessPieceActor::OnSelectionChanged_Implementation(bool bSelected)
 {
+	// Forward to component
+	if (SelectionComponent)
+	{
+		SelectionComponent->SetSelected(bSelected);
+	}
+
 	if (bSelected)
 	{
 		// Visual pop up
