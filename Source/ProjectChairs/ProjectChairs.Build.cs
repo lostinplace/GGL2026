@@ -38,7 +38,9 @@ public class ProjectChairs : ModuleRules
 			"ProjectChairs/Variant_SideScrolling/AI",
 			"ProjectChairs/Variant_SideScrolling/Gameplay",
 			"ProjectChairs/Variant_SideScrolling/Interfaces",
-			"ProjectChairs/Variant_SideScrolling/UI"
+			"ProjectChairs/Variant_SideScrolling/UI",
+			"ProjectChairs/CardSystem",
+			"ProjectChairs/CardSystem/Effects"
 		});
 
 		// Uncomment if you are using Slate UI

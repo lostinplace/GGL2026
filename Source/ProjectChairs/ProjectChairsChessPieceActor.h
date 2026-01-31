@@ -6,6 +6,8 @@
 #include "Presentation/ChessPieceActor.h"
 #include "ProjectChairsChessPieceActor.generated.h"
 
+class UChessPieceEffectComponent;
+
 /**
  * Project Chairs specific chess piece actor with game-specific functionality.
  */
@@ -16,6 +18,10 @@ class PROJECTCHAIRS_API AProjectChairsChessPieceActor : public AChessPieceActor
 
 public:
 	AProjectChairsChessPieceActor();
+
+	/** Component that manages the effect stack for this piece */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Effects")
+	UChessPieceEffectComponent* EffectComponent;
 
 protected:
 	virtual void BeginPlay() override;
