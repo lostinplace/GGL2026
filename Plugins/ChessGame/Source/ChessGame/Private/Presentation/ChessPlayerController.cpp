@@ -2,8 +2,10 @@
 #include "Presentation/SelectableChessPieceComponent.h"
 
 #include "Presentation/ChessPieceActor.h"
+#include "Logic/ChessGameSubsystem.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerState.h"
 #include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -50,9 +52,16 @@ void AChessPlayerController::SetupInputComponent()
 
 void AChessPlayerController::OnMouseClick()
 {
+	// Turn validation for multiplayer
+	if (!CanInteract())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ChessController] Not your turn! Waiting for opponent."));
+		return;
+	}
+
 	FVector HitLoc;
 	AChessBoardActor* HitBoard = FindBoardUnderCursor(HitLoc);
-	
+
 	if (HitBoard)
 	{
 		// Convert World Hit to Coord
@@ -148,4 +157,83 @@ AChessBoardActor* AChessPlayerController::FindBoardUnderCursor(FVector& OutHitLo
 	}
 	
 	return nullptr;
+}
+
+bool AChessPlayerController::CanInteract() const
+{
+	// If no assigned color (single player mode), always allow interaction
+	if (!HasAssignedColor())
+	{
+		return true;
+	}
+
+	// Get the current side to move from the subsystem
+	UGameInstance* GI = GetGameInstance();
+	if (!GI)
+	{
+		return true;
+	}
+
+	UChessGameSubsystem* ChessSubsystem = GI->GetSubsystem<UChessGameSubsystem>();
+	if (!ChessSubsystem)
+	{
+		return true;
+	}
+
+	// Only allow interaction if it's this player's turn
+	EPieceColor SideToMove = ChessSubsystem->GetSideToMove();
+	EPieceColor MyColor = GetAssignedColor();
+
+	return SideToMove == MyColor;
+}
+
+EPieceColor AChessPlayerController::GetAssignedColor() const
+{
+	// Check PlayerState for assigned color
+	// PlayerState needs to have AssignedChessColor and bHasAssignedColor properties
+	if (PlayerState)
+	{
+		// Use reflection to check if the PlayerState has these properties
+		// This avoids a hard dependency on ProjectChairsPlayerState in the plugin
+		UFunction* GetColorFunc = PlayerState->GetClass()->FindFunctionByName(TEXT("GetAssignedChessColor"));
+		if (GetColorFunc)
+		{
+			// Has the function, call it
+			struct { EPieceColor ReturnValue; } Params;
+			PlayerState->ProcessEvent(GetColorFunc, &Params);
+			return Params.ReturnValue;
+		}
+
+		// Fallback: Try to read the property directly via reflection
+		FProperty* ColorProp = PlayerState->GetClass()->FindPropertyByName(TEXT("AssignedChessColor"));
+		if (ColorProp)
+		{
+			EPieceColor* ColorPtr = ColorProp->ContainerPtrToValuePtr<EPieceColor>(PlayerState);
+			if (ColorPtr)
+			{
+				return *ColorPtr;
+			}
+		}
+	}
+
+	return EPieceColor::White;
+}
+
+bool AChessPlayerController::HasAssignedColor() const
+{
+	if (PlayerState)
+	{
+		// Check via reflection to avoid hard dependency
+		FProperty* HasColorProp = PlayerState->GetClass()->FindPropertyByName(TEXT("bHasAssignedColor"));
+		if (HasColorProp)
+		{
+			bool* HasColorPtr = HasColorProp->ContainerPtrToValuePtr<bool>(PlayerState);
+			if (HasColorPtr)
+			{
+				return *HasColorPtr;
+			}
+		}
+	}
+
+	return false;
 }
