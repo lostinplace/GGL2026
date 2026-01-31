@@ -34,10 +34,24 @@ protected:
 
 public:
 	/** Get the assigned chess color for this player from PlayerState */
+	UFUNCTION(BlueprintPure, Category = "Chess")
 	EPieceColor GetAssignedColor() const;
 
 	/** Check if the player has been assigned a color (multiplayer mode) */
+	UFUNCTION(BlueprintPure, Category = "Chess")
 	bool HasAssignedColor() const;
+
+	/** Event triggered when the controller successfully retrieves its assigned color */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Chess")
+	void OnColorAssigned(EPieceColor Color);
+
+	/** Get the color of the player whose turn it currently is */
+	UFUNCTION(BlueprintPure, Category = "Chess")
+	EPieceColor GetActivePlayerColor() const;
+
+	/** Event triggered when the turn changes (active player changes) */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Chess")
+	void OnTurnChanged(EPieceColor NewSideToMove);
 	// The board we are currently interacting with
 	// We can find this dynamically or set it
 	UPROPERTY(Transient, BlueprintReadWrite, Category = "Chess")

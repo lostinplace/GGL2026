@@ -421,6 +421,15 @@ void AChessBoardActor::OnMoveApplied(const FChessMove& Move)
 				if (*AP) UpdatePieceVisuals(Pair.Value, *AP);
 			}
 		}
+
+		// Notify Local Player Controller of Turn Change (for UI)
+		if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+		{
+			if (AChessPlayerController* ChessPC = Cast<AChessPlayerController>(PC))
+			{
+				ChessPC->OnTurnChanged(GameModel->BoardState->SideToMove);
+			}
+		}
 	}
 }
 

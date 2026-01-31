@@ -36,35 +36,37 @@ void AChessPlayerController::BeginPlay()
 	FTimerHandle TimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
 	{
-		if (HasAssignedColor() && CurrentBoard)
+		if (HasAssignedColor())
 		{
-			CurrentBoard->RefreshPieceVisuals();
-			// We can stop checking? No, Timer is one-off or looping?
-			// Let's make it loop until success, then clear using member handle?
-			// For simplicity: Check once after delay, and maybe retry?
-			// Better: Retry every 0.1s until success or timeout (limit 5s).
+			EPieceColor MyColor = GetAssignedColor();
+			if (CurrentBoard) CurrentBoard->RefreshPieceVisuals();
+			OnColorAssigned(MyColor); // Notify UI of my identity
+			OnTurnChanged(GetActivePlayerColor()); // Notify UI of current turn
 		}
 	}, 0.2f, false);
 	
-	// Better Re-try logic with delegate or looping
-	auto CheckColorLambda = [this, Handle = FTimerHandle()]() mutable
-	{
-		if (HasAssignedColor())
-		{
-			if (CurrentBoard) CurrentBoard->RefreshPieceVisuals();
-			// How to stop? Need Member Handle.
-			// MVP: Just delay 0.5s and 1.0s.
-		}
-	};
-	
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this](){
-		if(HasAssignedColor() && CurrentBoard) CurrentBoard->RefreshPieceVisuals();
-	}, 0.5f, false);
-	
-	// Also try at 1.5s just in case
+	// Retry Logic (0.5s)
 	FTimerHandle TimerHandle2;
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle2, [this](){
-		if(HasAssignedColor() && CurrentBoard) CurrentBoard->RefreshPieceVisuals();
+		if(HasAssignedColor())
+		{
+			EPieceColor MyColor = GetAssignedColor();
+			if (CurrentBoard) CurrentBoard->RefreshPieceVisuals();
+			OnColorAssigned(MyColor);
+			OnTurnChanged(GetActivePlayerColor());
+		}
+	}, 0.5f, false);
+	
+	// Retry Logic (1.5s)
+	FTimerHandle TimerHandle3;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle3, [this](){
+		if(HasAssignedColor())
+		{
+			EPieceColor MyColor = GetAssignedColor();
+			if (CurrentBoard) CurrentBoard->RefreshPieceVisuals();
+			OnColorAssigned(MyColor);
+			OnTurnChanged(GetActivePlayerColor());
+		}
 	}, 1.5f, false);
 }
 
@@ -275,7 +277,7 @@ bool AChessPlayerController::HasAssignedColor() const
 
 bool AChessPlayerController::Server_SubmitMove_Validate(AChessBoardActor* Board, FChessMove Move)
 {
-	return Board != nullptr;
+	return true;
 }
 
 void AChessPlayerController::Server_SubmitMove_Implementation(AChessBoardActor* Board, FChessMove Move)
@@ -284,4 +286,13 @@ void AChessPlayerController::Server_SubmitMove_Implementation(AChessBoardActor* 
 	{
 		Board->ProcessMove(Move);
 	}
+}
+
+EPieceColor AChessPlayerController::GetActivePlayerColor() const
+{
+	if (CurrentBoard && CurrentBoard->GameModel && CurrentBoard->GameModel->BoardState)
+	{
+		return CurrentBoard->GameModel->BoardState->SideToMove;
+	}
+	return EPieceColor::White;
 }
