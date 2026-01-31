@@ -16,9 +16,25 @@ AChessPieceActor::AChessPieceActor()
 	BaseMesh->SetupAttachment(RootComponent);
 
 	MaskMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MaskMesh"));
-	MaskMesh->SetupAttachment(BaseMesh, FName("MaskSocket")); // Attach to socket as requested
+	MaskMesh->SetupAttachment(BaseMesh); // Removed "MaskSocket" to avoid warning on empty skeletal mesh
+	// Attachment to socket logic is handled in UpdateVisuals
 
 	SelectionComponent = CreateDefaultSubobject<USelectableChessPieceComponent>(TEXT("SelectionComponent"));
+}
+
+void AChessPieceActor::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	// Fix for BP having stale "MaskSocket" attachment which warns if SkeletalMesh is null
+	if (BaseMesh && MaskMesh)
+	{
+		if (!BaseMesh->GetSkeletalMeshAsset() && MaskMesh->GetAttachSocketName() != NAME_None)
+		{
+			// Detach or clear socket
+			MaskMesh->AttachToComponent(BaseMesh, FAttachmentTransformRules::KeepRelativeTransform); 
+		}
+	}
 }
 
 void AChessPieceActor::BeginPlay()
@@ -41,13 +57,16 @@ void AChessPieceActor::UpdateVisuals_Implementation(const class UChessPieceStyle
 			// Re-attach Mask Mesh to the new Socket
 			if (MaskMesh)
 			{
-				if (BaseMesh->DoesSocketExist(FName("MaskSocket")))
+				// Only check socket if we have a mesh (avoids warning)
+				if (BaseMesh->GetSkeletalMeshAsset() && BaseMesh->DoesSocketExist(FName("MaskSocket")))
 				{
 					MaskMesh->AttachToComponent(BaseMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, FName("MaskSocket"));
 				}
 				else
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Piece %d (%s) missing 'MaskSocket' on mesh %s"), PieceId, *GetName(), *Mesh->GetName());
+					// Fallback: Attach to root if socket missing
+					MaskMesh->AttachToComponent(BaseMesh, FAttachmentTransformRules::SnapToTargetIncludingScale);
+					// UE_LOG(LogTemp, Warning, TEXT("Piece %d (%s) using Root attachment (Missing MaskSocket)"), PieceId, *GetName());
 				}
 			}
 		}

@@ -81,6 +81,9 @@ public:
 	UFUNCTION(BlueprintPure)
 	EPieceColor GetObserverSide() const;
 
+	UFUNCTION(BlueprintCallable)
+	void RefreshPieceVisuals();
+
 	void UpdatePieceVisuals(const struct FPieceInstance& Piece, AChessPieceActor* Actor);
 
 	// Visuals
@@ -88,8 +91,8 @@ public:
 	void SpawnPieceActor(int32 PieceId, EPieceType Type, EPieceColor Color, FBoardCoord Coord);
 
 	// Network
-	UFUNCTION(Server, Reliable)
-	void Server_TryMove(FChessMove Move);
+	// ProcessMove called by PlayerController (Authority Only)
+	void ProcessMove(FChessMove Move);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_BroadcastMove(FChessMove Move);

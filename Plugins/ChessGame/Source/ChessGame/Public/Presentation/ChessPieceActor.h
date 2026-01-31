@@ -64,6 +64,7 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Chess")
 	void OnMaskChanged(EPieceType NewMask);
 	
+	virtual void PostInitializeComponents() override;
 	virtual void BeginPlay() override;
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)

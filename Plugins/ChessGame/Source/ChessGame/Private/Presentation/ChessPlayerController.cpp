@@ -31,6 +31,41 @@ void AChessPlayerController::BeginPlay()
 			break;
 		}
 	}
+
+	// Wait for Color Assignment (Network Delay)
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
+	{
+		if (HasAssignedColor() && CurrentBoard)
+		{
+			CurrentBoard->RefreshPieceVisuals();
+			// We can stop checking? No, Timer is one-off or looping?
+			// Let's make it loop until success, then clear using member handle?
+			// For simplicity: Check once after delay, and maybe retry?
+			// Better: Retry every 0.1s until success or timeout (limit 5s).
+		}
+	}, 0.2f, false);
+	
+	// Better Re-try logic with delegate or looping
+	auto CheckColorLambda = [this, Handle = FTimerHandle()]() mutable
+	{
+		if (HasAssignedColor())
+		{
+			if (CurrentBoard) CurrentBoard->RefreshPieceVisuals();
+			// How to stop? Need Member Handle.
+			// MVP: Just delay 0.5s and 1.0s.
+		}
+	};
+	
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this](){
+		if(HasAssignedColor() && CurrentBoard) CurrentBoard->RefreshPieceVisuals();
+	}, 0.5f, false);
+	
+	// Also try at 1.5s just in case
+	FTimerHandle TimerHandle2;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle2, [this](){
+		if(HasAssignedColor() && CurrentBoard) CurrentBoard->RefreshPieceVisuals();
+	}, 1.5f, false);
 }
 
 void AChessPlayerController::SetupInputComponent()
@@ -236,4 +271,17 @@ bool AChessPlayerController::HasAssignedColor() const
 	}
 
 	return false;
+}
+
+bool AChessPlayerController::Server_SubmitMove_Validate(AChessBoardActor* Board, FChessMove Move)
+{
+	return Board != nullptr;
+}
+
+void AChessPlayerController::Server_SubmitMove_Implementation(AChessBoardActor* Board, FChessMove Move)
+{
+	if (Board)
+	{
+		Board->ProcessMove(Move);
+	}
 }
