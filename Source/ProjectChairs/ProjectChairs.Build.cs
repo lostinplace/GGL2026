@@ -18,7 +18,8 @@ public class ProjectChairs : ModuleRules
 			"StateTreeModule",
 			"GameplayStateTreeModule",
 			"UMG",
-			"Slate"
+			"Slate",
+			"ChessGame"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
