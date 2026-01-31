@@ -1,0 +1,7 @@
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+	<s:String x:Key="/Default/CodeInspection/ExcludedFiles/FilesAndFoldersToSkip2/=7020124F_002D9FFC_002D4AC3_002D8F3D_002DAAB8E0240759_002Ff_003ALetekiz_002Easm_002Fl_003A_002E_002E_003F_002E_002E_003FUsers_003FChrisWheeler_003FAppData_003FLocal_003FTemp_003FSandboxFiles_003FPygibup_003FLetekiz_002Easm/@EntryIndexedValue">ForceIncluded</s:String>
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=f5563ffe_002D00a2_002D4948_002D8579_002D60d084eeaffc/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="All tests from ChessGameTests.cpp" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
+  &lt;ProjectFile&gt;EE6A6BFF-506A-8D1C-4A06-2D945C81B5D8/d:Private/d:Tests/f:ChessGameTests.cpp&lt;/ProjectFile&gt;&#xD;
+&lt;/SessionState&gt;</s:String>
+	
+	</wpf:ResourceDictionary>
