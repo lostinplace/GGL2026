@@ -4,6 +4,8 @@
 #include "ChessGameState.h"
 #include "ProjectChairsPlayerState.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerStart.h"
+#include "EngineUtils.h"
 
 AChessLobbyGameMode::AChessLobbyGameMode()
 {
@@ -29,21 +31,60 @@ void AChessLobbyGameMode::Logout(AController* Exiting)
 		APlayerController* PC = Cast<APlayerController>(Exiting);
 		if (PC && PC->PlayerState)
 		{
-			// Clear the player from their slot
+			// Clear the player from their slot and release spawn reservation
 			if (ChessState->WhitePlayer == PC->PlayerState)
 			{
 				ChessState->WhitePlayer = nullptr;
+				bWhiteSpawnReserved = false;
 				UE_LOG(LogTemp, Log, TEXT("[ChessLobbyGameMode] White player disconnected"));
 			}
 			else if (ChessState->BlackPlayer == PC->PlayerState)
 			{
 				ChessState->BlackPlayer = nullptr;
+				bBlackSpawnReserved = false;
 				UE_LOG(LogTemp, Log, TEXT("[ChessLobbyGameMode] Black player disconnected"));
 			}
 		}
 	}
 
 	Super::Logout(Exiting);
+}
+
+AActor* AChessLobbyGameMode::ChoosePlayerStart_Implementation(AController* Player)
+{
+	// Reserve a spawn slot immediately to handle simultaneous joins
+	FName DesiredTag;
+	if (!bWhiteSpawnReserved)
+	{
+		bWhiteSpawnReserved = true;
+		DesiredTag = FName("White");
+	}
+	else if (!bBlackSpawnReserved)
+	{
+		bBlackSpawnReserved = true;
+		DesiredTag = FName("Black");
+	}
+	else
+	{
+		// Both slots taken - spectator or reject
+		UE_LOG(LogTemp, Warning, TEXT("[ChessLobbyGameMode] Both spawn slots reserved, using default spawn"));
+		return Super::ChoosePlayerStart_Implementation(Player);
+	}
+
+	// Find a PlayerStart with the matching tag
+	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
+	{
+		APlayerStart* PlayerStart = *It;
+		if (PlayerStart->PlayerStartTag == DesiredTag)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[ChessLobbyGameMode] Spawning player at %s PlayerStart"), *DesiredTag.ToString());
+			return PlayerStart;
+		}
+	}
+
+	// Fallback to default behavior if no tagged spawn found
+	UE_LOG(LogTemp, Warning, TEXT("[ChessLobbyGameMode] No PlayerStart with tag '%s' found, using default"), *DesiredTag.ToString());
+	return Super::ChoosePlayerStart_Implementation(Player);
 }
 
 void AChessLobbyGameMode::AssignPlayerColor(APlayerController* PlayerController)

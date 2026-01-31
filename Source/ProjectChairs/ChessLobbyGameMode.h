@@ -22,6 +22,7 @@ public:
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 	/** Called when both players are ready - can be used to start the game */
 	UFUNCTION(BlueprintCallable, Category = "Chess")
@@ -37,4 +38,9 @@ protected:
 
 	/** Get the ChessGameState */
 	AChessGameState* GetChessGameState() const;
+
+private:
+	/** Tracks which spawn points have been reserved (set in ChoosePlayerStart before PostLogin runs) */
+	bool bWhiteSpawnReserved = false;
+	bool bBlackSpawnReserved = false;
 };

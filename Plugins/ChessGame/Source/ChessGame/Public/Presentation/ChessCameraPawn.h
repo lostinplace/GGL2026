@@ -35,9 +35,43 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	class UInputAction* MoveAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	class UInputAction* ZoomAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	class UInputAction* CameraDragAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	class UInputAction* CameraLookAction;
+
+	// Camera Settings
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float MinZoomDistance = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float MaxZoomDistance = 1000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float ZoomSpeed = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float LookSensitivity = 0.75f;  // Mouse sensitivity for camera look
+
+	UPROPERTY(BlueprintReadOnly, Category = "Camera")
+	bool bIsDragging = false;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	void Move(const FInputActionValue& Value);
+	void OnCameraZoom(const FInputActionValue& Value);
+	void OnCameraDragStart(const FInputActionValue& Value);
+	void OnCameraDragEnd(const FInputActionValue& Value);
+	void OnCameraLook(const FInputActionValue& Value);
+
+private:
+	// Camera orientation state
+	float CameraPitch = -50.0f;
+	float CameraYaw = 0.0f;
 };
