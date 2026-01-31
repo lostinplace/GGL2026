@@ -127,6 +127,78 @@ void UChessRuleSet::SetupInitialBoardState(UChessBoardState* BoardState, EChessI
 			Pair.Value.MaskType = EPieceType::Pawn;
 		}
 	}
+	else if (InitMode == EChessInitMode::Test_MaskSwap)
+	{
+		auto SetupSide = [&](EPieceColor Color) {
+			int32 BackRank = (Color == EPieceColor::White) ? 0 : 7;
+			int32 FrontRank = (Color == EPieceColor::White) ? 1 : 6;
+
+			// 1. Define Standard Set (Minus King)
+			TArray<EPieceType> Pieces;
+			Pieces.Add(EPieceType::Queen);
+			for(int k=0; k<2; k++) Pieces.Add(EPieceType::Rook);
+			for(int k=0; k<2; k++) Pieces.Add(EPieceType::Bishop);
+			for(int k=0; k<2; k++) Pieces.Add(EPieceType::Knight);
+			for(int k=0; k<8; k++) Pieces.Add(EPieceType::Pawn);
+			
+			// Shuffle Pieces
+			int32 LastIndex = Pieces.Num() - 1;
+			for (int32 i = 0; i <= LastIndex; ++i)
+			{
+				int32 Index = FMath::RandRange(i, LastIndex);
+				if (i != Index) Pieces.Swap(i, Index);
+			}
+
+			// 2. Place King (Back Rank only)
+			int32 KingFile = FMath::RandRange(0, 7);
+			AddPiece(EPieceType::King, Color, KingFile, BackRank);
+
+			// 3. Fill Remaining Slots
+			// Available slots: (0..7, BackRank) excluding KingFile, AND (0..7, FrontRank)
+			TArray<FBoardCoord> Slots;
+			for(int f=0; f<8; f++) 
+			{
+				if(f != KingFile) Slots.Add(FBoardCoord(f, BackRank));
+			}
+			for(int f=0; f<8; f++) Slots.Add(FBoardCoord(f, FrontRank));
+
+			// Place shuffled pieces
+			for (int i = 0; i < Pieces.Num() && i < Slots.Num(); ++i)
+			{
+				AddPiece(Pieces[i], Color, Slots[i].File, Slots[i].Rank);
+			}
+
+			// 4. Assign Masks (Standard Distribution)
+			TArray<EPieceType> Masks;
+			Masks.Add(EPieceType::King);
+			Masks.Add(EPieceType::Queen);
+			for(int k=0; k<2; k++) Masks.Add(EPieceType::Rook);
+			for(int k=0; k<2; k++) Masks.Add(EPieceType::Bishop);
+			for(int k=0; k<2; k++) Masks.Add(EPieceType::Knight);
+			for(int k=0; k<8; k++) Masks.Add(EPieceType::Pawn);
+			
+			// Shuffle Masks
+			LastIndex = Masks.Num() - 1;
+			for (int32 i = 0; i <= LastIndex; ++i)
+			{
+				int32 Index = FMath::RandRange(i, LastIndex);
+				if (i != Index) Masks.Swap(i, Index);
+			}
+
+			// Assign to pieces of this color
+			int32 MaskIdx = 0;
+			for (auto& Pair : BoardState->Pieces)
+			{
+				if (Pair.Value.Color == Color && MaskIdx < Masks.Num())
+				{
+					Pair.Value.MaskType = Masks[MaskIdx++];
+				}
+			}
+		};
+
+		SetupSide(EPieceColor::White);
+		SetupSide(EPieceColor::Black);
+	}
 	else if (InitMode == EChessInitMode::Random960)
 	{
 		// 1. Setup empty back rank slots

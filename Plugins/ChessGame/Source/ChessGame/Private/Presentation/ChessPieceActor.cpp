@@ -69,13 +69,9 @@ void AChessPieceActor::UpdateVisuals_Implementation(const class UChessPieceStyle
 				MaskMesh->SetStaticMesh(const_cast<UStaticMesh*>(MMesh));
 				MaskMesh->SetVisibility(true);
 				
-				// Apply Material to Mask too? 
-				// User said "master piece should also take a matrial which it applies to material slot 0 of the pieces"
-				// Assuming consistent styling:
-				if (UMaterialInterface* Mat = StyleSet->GetSideMaterial(Color))
-				{
-					MaskMesh->SetMaterial(0, Mat);
-				}
+				// Apply Material to Mask too?
+				// User reported this messes up mask materials. Removing override.
+				// MaskMesh->SetMaterial(0, Mat);
 			}
 			else
 			{
