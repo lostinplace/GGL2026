@@ -78,6 +78,11 @@ public:
 	UFUNCTION()
 	void OnPieceMaskChanged(int32 PieceId, EPieceType NewMask);
 
+	UFUNCTION(BlueprintPure)
+	EPieceColor GetObserverSide() const;
+
+	void UpdatePieceVisuals(const struct FPieceInstance& Piece, AChessPieceActor* Actor);
+
 	// Visuals
 	void SyncVisuals();
 	void SpawnPieceActor(int32 PieceId, EPieceType Type, EPieceColor Color, FBoardCoord Coord);
@@ -105,4 +110,12 @@ public:
 	UFUNCTION(BlueprintNativeEvent)
 	void OnClearHighlights();
 
+protected:
+	UPROPERTY()
+	TArray<AChessPieceActor*> GraveyardWhite;
+
+	UPROPERTY()
+	TArray<AChessPieceActor*> GraveyardBlack;
+
+	void AddToGraveyard(AChessPieceActor* Actor);
 };

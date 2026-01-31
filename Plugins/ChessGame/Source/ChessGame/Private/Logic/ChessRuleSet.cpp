@@ -90,16 +90,6 @@ void UChessRuleSet::SetupInitialBoardState(UChessBoardState* BoardState, EChessI
 		AddPiece(EPieceType::King, EPieceColor::White, 4, 0);
 		AddPiece(EPieceType::King, EPieceColor::Black, 4, 7);
 	}
-	// Chess960
-	else if (InitMode == EChessInitMode::Random960)
-	{
-		// ... existing 960 logic ...
-		// (omitted for brevity in replacement, better to target specifically if possible)
-		// Since I cannot select "existing 960 logic" easily without copying it all, 
-		// I will append the new mode logic AFTER the 960 block or insert it.
-		// Retargeting to insert BEFORE 960 or handle 960 better.
-		// Actually, let's just use the 'Standard' block as a reference and add a new block.
-	}
 	
 	// Better approach: Modify the condition to allow standard setup, then apply mask.
 	else if (InitMode == EChessInitMode::Test_MaskedPawns)

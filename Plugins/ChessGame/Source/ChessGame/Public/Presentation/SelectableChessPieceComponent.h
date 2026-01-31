@@ -30,6 +30,12 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Selection")
 	bool bIsSelected = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Selection")
+	bool bIsSelectable = true;
+
+	UFUNCTION(BlueprintCallable, Category = "Selection")
+	void SetSelectable(bool bNewSelectable) { bIsSelectable = bNewSelectable; }
+
 	// Helper to get from Actor
 	static USelectableChessPieceComponent* FindSelectableComponent(AActor* Actor);
 };

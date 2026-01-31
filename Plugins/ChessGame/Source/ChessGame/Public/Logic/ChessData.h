@@ -40,6 +40,7 @@ enum class EChessInitMode : uint8
 	Empty,
 	Test_KingsOnly,
 	Test_MaskedPawns,
+	Test_MaskSwap, // New Mode
 	Random960
 };
 

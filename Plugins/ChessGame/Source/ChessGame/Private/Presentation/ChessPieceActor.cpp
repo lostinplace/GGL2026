@@ -21,6 +21,12 @@ AChessPieceActor::AChessPieceActor()
 	SelectionComponent = CreateDefaultSubobject<USelectableChessPieceComponent>(TEXT("SelectionComponent"));
 }
 
+void AChessPieceActor::BeginPlay()
+{
+	Super::BeginPlay();
+	// Logic moved to UpdateVisuals to ensure mesh is ready
+}
+
 void AChessPieceActor::UpdateVisuals_Implementation(const class UChessPieceStyleSet* StyleSet, EPieceType BodyType, EPieceType MaskType)
 {
 	if (!StyleSet) return;
@@ -31,6 +37,19 @@ void AChessPieceActor::UpdateVisuals_Implementation(const class UChessPieceStyle
 		if (const USkeletalMesh* Mesh = StyleSet->GetPieceMesh(Color, BodyType))
 		{
 			BaseMesh->SetSkeletalMesh(const_cast<USkeletalMesh*>(Mesh));
+			
+			// Re-attach Mask Mesh to the new Socket
+			if (MaskMesh)
+			{
+				if (BaseMesh->DoesSocketExist(FName("MaskSocket")))
+				{
+					MaskMesh->AttachToComponent(BaseMesh, FAttachmentTransformRules::SnapToTargetIncludingScale, FName("MaskSocket"));
+				}
+				else
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Piece %d (%s) missing 'MaskSocket' on mesh %s"), PieceId, *GetName(), *Mesh->GetName());
+				}
+			}
 		}
 		
 		// Apply Side Material (Slot 0)

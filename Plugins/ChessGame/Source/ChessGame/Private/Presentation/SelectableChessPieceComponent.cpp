@@ -13,6 +13,11 @@ void USelectableChessPieceComponent::BeginPlay()
 
 void USelectableChessPieceComponent::SetSelected(bool bNewSelected)
 {
+	if (bNewSelected && !bIsSelectable)
+	{
+		return;
+	}
+
 	if (bIsSelected != bNewSelected)
 	{
 		bIsSelected = bNewSelected;

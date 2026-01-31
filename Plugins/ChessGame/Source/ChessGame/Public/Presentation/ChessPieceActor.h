@@ -63,6 +63,8 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Chess")
 	void OnMaskChanged(EPieceType NewMask);
+	
+	virtual void BeginPlay() override;
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnSelectionChanged(bool bSelected);

@@ -2,7 +2,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "DrawDebugHelpers.h"
+#include "DrawDebugHelpers.h"
 #include "Logic/ChessGameSubsystem.h" // Include Subsystem
+#include "Presentation/SelectableChessPieceComponent.h" // Required for Graveyard logic
 
 AChessBoardActor::AChessBoardActor()
 {
@@ -15,6 +17,30 @@ AChessBoardActor::AChessBoardActor()
 void AChessBoardActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// Debug: Show Current Player
+	// if (GameModel && GameModel->BoardState)
+	// {
+	// 	FString SideStr = (GameModel->BoardState->SideToMove == EPieceColor::White) ? TEXT("White") : TEXT("Black");
+	// 	if (GEngine)
+	// 	{
+	// 		GEngine->AddOnScreenDebugMessage(100, 0.0f, FColor::Yellow, FString::Printf(TEXT("Current Player: %s"), *SideStr));
+	// 	}
+	// }
+	// Kept commented out for future debugging if needed, or remove completely? 
+	// User might want it? "let's make it so that the current player id is printed in the top left of the screen at all times"
+	// User REQUESTED this in Step 1086: "let's make it so that the current player id is printed in the top left of the screen at all times"
+	// So I should KEEP the player ID debug.
+	
+	// I should ONLY remove the Mask Attachment debug.
+	if (GameModel && GameModel->BoardState)
+	{
+		FString SideStr = (GameModel->BoardState->SideToMove == EPieceColor::White) ? TEXT("White") : TEXT("Black");
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(100, 0.0f, FColor::Yellow, FString::Printf(TEXT("Current Player: %s"), *SideStr));
+		}
+	}
 
 	if (bShowDebugGrid)
 	{
@@ -44,11 +70,13 @@ bool AChessBoardActor::ShouldTickIfViewportsOnly() const
 void AChessBoardActor::BeginPlay()
 {
 	Super::BeginPlay();
+	UE_LOG(LogTemp, Warning, TEXT("AChessBoardActor::BeginPlay Start"));
 
 	// Initialize Model
 	GameModel = NewObject<UChessGameModel>(this);
 	GameModel->InitMode = InitMode; // Pass configuration
 	GameModel->InitializeGame();
+	UE_LOG(LogTemp, Warning, TEXT("GameModel Initialized. InitMode: %d"), (int32)InitMode);
 
 	// Register with Subsystem
 	if (UChessGameSubsystem* Subsystem = GetGameInstance()->GetSubsystem<UChessGameSubsystem>())
@@ -123,8 +151,6 @@ void AChessBoardActor::OnSubsystemSelectionChanged(FBoardCoord NewCoord)
 		// Highlight Moves
 		TArray<FChessMove> LegalMoves;
 		GameModel->GetLegalMovesForCoord(NewCoord, LegalMoves);
-
-		UE_LOG(LogTemp, Warning, TEXT("[ChessBoard] Selection Changed to %d,%d. Found %d Legal Moves."), NewCoord.File, NewCoord.Rank, LegalMoves.Num());
 		
 		OnHighlightMoves(LegalMoves);
 	}
@@ -247,6 +273,15 @@ void AChessBoardActor::SyncVisuals()
 		if (Pair.Value) Pair.Value->Destroy();
 	}
 	PieceActors.Empty();
+	
+	if (!GameModel || !GameModel->BoardState)
+	{
+		UE_LOG(LogTemp, Error, TEXT("SyncVisuals: GameModel or BoardState is NULL"));
+		return;
+	}
+
+	int32 Count = GameModel->BoardState->Pieces.Num();
+	UE_LOG(LogTemp, Warning, TEXT("SyncVisuals: Found %d pieces in BoardState"), Count);
 
 	// Spawn new
 	for (const auto& Pair : GameModel->BoardState->Pieces)
@@ -265,44 +300,28 @@ void AChessBoardActor::SyncVisuals()
 
 void AChessBoardActor::SpawnPieceActor(int32 PieceId, EPieceType Type, EPieceColor Color, FBoardCoord Coord)
 {
-	if (!StyleSet) return;
+	if (!StyleSet)
+	{
+		UE_LOG(LogTemp, Error, TEXT("SpawnPieceActor: StyleSet is NULL!"));
+		return;
+	}
 	if (!GameModel || !GameModel->BoardState) return;
 
 	// Determine Visual Type based on Observer
 	EPieceType VisualType = Type;
-	
-	// Get Observer (For Local Player). 
-	// In a real network game, we need to know "Who Am I".
-	// For MVP/Local testing, we can assume we are "White" or "Black" based on...
-	// Actually, this logic runs on ALL clients.
-	// We need GetLocalPlayer -> Subsystem -> Side?
-	// Or simply, we spawn based on "Who is viewing".
-	// BUT, if we spawn an Actor, everyone sees the same Actor Mesh unless we use 'OnlyOwnerSee' which is complex for board games.
-	// Better approach: The Piece Actor itself handles the visual deception based on Local Player Controller?
-	// OR: The Server replicates the "Visual Type" separately?
-	
-	// User Requirement: "to the owning player, the pice will look like it's real type... to the opposing player, a masked piece should always look like a rook"
-	// This means we need DYNAMIC visuals per client.
-	// Actors are replicated. 
 	
 	// APPROACH:
 	// 1. Pass the PieceInstance to the Actor.
 	// 2. The Actor in BeginPlay (and OnRep) checks Local Player Controller Team.
 	// 3. Sets Mesh accordingly.
 	
-	// For NOW, in SpawnPieceActor, we just pass the PieceID/Info. We interact with the Actor below.
-	
 	TSubclassOf<AChessPieceActor> Class = StyleSet->GetPieceClass(Color, Type); 
-	// PROBLEM: If we spawn the "Real" class, and the visual is "Pawn", but real is "Rook", 
-	// and if classes allow different logic/visuals, we might need a generic class.
-	// Assuming StyleSet returns same class (BP_ChessPiece) for all, just different meshes?
-	// If different classes, we have a problem swapping them locally.
-	
-	// Let's assume generic BP_ChessPiece_C is used, or they share logic.
-	// If the user uses unique BPs for Rook vs Pawn, we cannot easily swap "Visuals" without destroying actor.
-	
-	// MVP Fix: Spawn the "REAL" actor, but tell it to "Disguise" itself.
-	
+	if (!Class)
+	{
+		UE_LOG(LogTemp, Error, TEXT("SpawnPieceActor: StyleSet returned NULL Class for Color %d Type %d"), (int32)Color, (int32)Type);
+		return;
+	}
+
 	if (Class)
 	{
 		FVector Loc = CoordToWorld(Coord);
@@ -311,31 +330,28 @@ void AChessBoardActor::SpawnPieceActor(int32 PieceId, EPieceType Type, EPieceCol
 		if (Color == EPieceColor::Black) Rot.Yaw = 180.0f;
 
 		AChessPieceActor* NewPiece = GetWorld()->SpawnActor<AChessPieceActor>(Class, Loc, Rot, Params);
+		if (!NewPiece)
+		{
+			UE_LOG(LogTemp, Error, TEXT("SpawnPieceActor: GetWorld()->SpawnActor Failed!"));
+		}
 		if (NewPiece)
 		{
 			NewPiece->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 			NewPiece->Init(PieceId, Type, Color);
 			
-			// Setup Masking
+			NewPiece->Init(PieceId, Type, Color);
+			
+			// Setup Visuals
 			const FPieceInstance* Piece = GameModel->BoardState->Pieces.Find(PieceId);
-			
-			// Determine Observer Side (MVP: White)
-			EPieceColor ObserverSide = EPieceColor::White; 
-			
-			EPieceType BodyType = Type;
-			EPieceType MaskType = EPieceType::None;
-
 			if (Piece)
 			{
-				MaskType = Piece->MaskType;
-				if (Color != ObserverSide && MaskType != EPieceType::None)
-				{
-					BodyType = EPieceType::Pawn;
-				}
+				UpdatePieceVisuals(*Piece, NewPiece);
 			}
-
-			// Apply Visuals
-			NewPiece->UpdateVisuals(StyleSet, BodyType, MaskType);
+			else
+			{
+				// Fallback if not in map? Should not happen during spawn loop
+				NewPiece->UpdateVisuals(StyleSet, Type, EPieceType::None);
+			}
 
 			PieceActors.Add(PieceId, NewPiece);
 		}
@@ -387,6 +403,18 @@ void AChessBoardActor::OnMoveApplied(const FChessMove& Move)
 			}
 		}
 	}
+
+	// Refresh Visuals for Turn Change (Hot Seat Debugging)
+	if (GameModel && GameModel->BoardState)
+	{
+		for (auto& Pair : GameModel->BoardState->Pieces)
+		{
+			if (AChessPieceActor** AP = PieceActors.Find(Pair.Key))
+			{
+				if (*AP) UpdatePieceVisuals(Pair.Value, *AP);
+			}
+		}
+	}
 }
 
 void AChessBoardActor::OnPieceCaptured(int32 PieceId)
@@ -397,9 +425,85 @@ void AChessBoardActor::OnPieceCaptured(int32 PieceId)
 		if (Actor)
 		{
 			Actor->OnCaptured();
-			Actor->Destroy();
+			AddToGraveyard(Actor);
+			// Do NOT Destroy.
 		}
 		PieceActors.Remove(PieceId);
+	}
+}
+
+void AChessBoardActor::AddToGraveyard(AChessPieceActor* Actor)
+{
+	if (!Actor) return;
+
+	// Disable Interaction
+	if (Actor->SelectionComponent)
+	{
+		Actor->SelectionComponent->SetSelectable(false);
+	}
+
+	// Determine Graveyard & Index
+	TArray<AChessPieceActor*>* Graveyard = nullptr;
+	int32 Index = 0;
+	int32 Direction = 1; // 1 for Right, -1 for Left
+
+	// Logic:
+	// Captured White pieces -> Go to Black's side? Or White's side?
+	// Usually "My Captured Pile" contains enemy pieces I captured.
+	// But "Pieces shown by the side" could mean "Dead Pool".
+	// Let's group by "Color of the Piece".
+	// White Pieces go to White Side (Left/Bottom), Black to Black Side.
+	
+	if (Actor->Color == EPieceColor::White)
+	{
+		Graveyard = &GraveyardWhite;
+		Direction = -1; // Left of board
+	}
+	else
+	{
+		Graveyard = &GraveyardBlack;
+		Direction = 1; // Right of board
+	}
+
+	if (Graveyard)
+	{
+		Index = Graveyard->Num();
+		Graveyard->Add(Actor);
+		
+		// Calculate Location
+		// Board Width approx 8 * SquareSize.
+		// Offset from Center.
+		// If CenterBoard is true, Board is -4 to +4.
+		// Left Side starts at -5. Right starts at +5.
+		
+		float FileOffset = (bCenterBoard ? 5.0f : 9.0f) * Direction;
+		// Stack them? 2 columns?
+		// Simple Row:
+		float X = FileOffset * SquareSize; 
+		
+		// Y Position: Start from Rank 0 up to Rank 7, then wrap?
+		// Let's just stack them linearly along Y using Index.
+		// Center Y = 0.
+		// Start at Y = -3.5 * Size (Rank 0 equivalent).
+		float StartY = (bCenterBoard ? -3.5f : 0.5f) * SquareSize;
+		float Y = StartY + (Index * SquareSize * 0.6f); // Tighter packing
+		
+		// If too many, make a second column
+		if (Index >= 8)
+		{
+			X += Direction * SquareSize * 0.8f;
+			Y = StartY + ((Index - 8) * SquareSize * 0.6f);
+		}
+
+		FVector NewLoc(X, Y, PieceHeightOffset);
+		
+		// Transform to World
+		// CoordToWorld handles Board Transform, but we are calculating local coords manually here.
+		// Let's use Actor Transform.
+		FVector WorldLoc = GetActorTransform().TransformPosition(NewLoc);
+		
+		Actor->SetActorLocation(WorldLoc);
+		Actor->SetActorRotation(GetActorRotation()); // Reset rotation?
 	}
 }
 
@@ -421,27 +525,7 @@ void AChessBoardActor::OnPieceMaskChanged(int32 PieceId, EPieceType NewMask)
 			AChessPieceActor* Actor = *ActorPtr;
 			if (Actor)
 			{
-				// Determine Observer Side (MVP: White)
-				EPieceColor ObserverSide = EPieceColor::White;
-				APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0); 
-				
-				// Calculate Visuals
-				// Owner: Real base type + mask
-				// Opponent: Pawn base type (if masked) + mask. 
-				// Note: If no mask, both see Real Type.
-				
-				EPieceType BodyType = Piece->Type;
-				EPieceType MaskType = Piece->MaskType;
-				
-				if (Piece->Color != ObserverSide && MaskType != EPieceType::None)
-				{
-					// Opponent View of Masked Piece
-					// "pawn with its mask"
-					BodyType = EPieceType::Pawn; 
-				}
-				
-				// Apply
-				Actor->UpdateVisuals(StyleSet, BodyType, MaskType);
+				UpdatePieceVisuals(*Piece, Actor);
 				
 				// Also notify actor of mask change (sound/fx)
 				Actor->OnMaskChanged(NewMask);
@@ -513,4 +597,32 @@ void AChessBoardActor::OnClearHighlights_Implementation()
 	// So we should use bPersistent = true? And FlushDebugStrings? No, FlushPersistentDebugLines.
 	
 	FlushPersistentDebugLines(GetWorld());
+}
+
+EPieceColor AChessBoardActor::GetObserverSide() const
+{
+	// For Hot-Seat Debugging: Observer is the Player whose turn it is.
+	if (GameModel && GameModel->BoardState)
+	{
+		return GameModel->BoardState->SideToMove;
+	}
+	return EPieceColor::White;
+}
+
+void AChessBoardActor::UpdatePieceVisuals(const FPieceInstance& Piece, AChessPieceActor* Actor)
+{
+	if (!Actor || !StyleSet) return;
+
+	EPieceColor ObserverSide = GetObserverSide();
+	EPieceType BodyType = Piece.Type;
+	EPieceType MaskType = Piece.MaskType;
+
+	// Visual Deception Logic
+	// If I am NOT the owner, and the piece is Masked -> I see a Pawn + Mask
+	if (Piece.Color != ObserverSide && MaskType != EPieceType::None)
+	{
+		BodyType = EPieceType::Pawn;
+	}
+
+	Actor->UpdateVisuals(StyleSet, BodyType, MaskType);
 }
