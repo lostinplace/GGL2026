@@ -12,13 +12,62 @@ AChessPieceActor::AChessPieceActor()
 	// Create a root component so it can be placed
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
+	BaseMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BaseMesh"));
+	BaseMesh->SetupAttachment(RootComponent);
+
+	MaskMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MaskMesh"));
+	MaskMesh->SetupAttachment(BaseMesh, FName("MaskSocket")); // Attach to socket as requested
+
 	SelectionComponent = CreateDefaultSubobject<USelectableChessPieceComponent>(TEXT("SelectionComponent"));
 }
 
-void AChessPieceActor::UpdateVisuals_Implementation(const class UChessPieceStyleSet* StyleSet, EPieceType VisualType)
+void AChessPieceActor::UpdateVisuals_Implementation(const class UChessPieceStyleSet* StyleSet, EPieceType BodyType, EPieceType MaskType)
 {
-	// Default implementation does nothing. Blueprint can overwrite.
-	// UE_LOG(LogTemp, Verbose, TEXT("AChessPieceActor::UpdateVisuals_Implementation Called"));
+	if (!StyleSet) return;
+	
+	// 1. Update Base Mesh
+	if (BaseMesh)
+	{
+		if (const USkeletalMesh* Mesh = StyleSet->GetPieceMesh(Color, BodyType))
+		{
+			BaseMesh->SetSkeletalMesh(const_cast<USkeletalMesh*>(Mesh));
+		}
+		
+		// Apply Side Material (Slot 0)
+		if (UMaterialInterface* Mat = StyleSet->GetSideMaterial(Color))
+		{
+			BaseMesh->SetMaterial(0, Mat);
+		}
+	}
+
+	// 2. Update Mask Mesh
+	if (MaskMesh)
+	{
+		if (MaskType != EPieceType::None)
+		{
+			if (const UStaticMesh* MMesh = StyleSet->GetMaskMesh(Color, MaskType))
+			{
+				MaskMesh->SetStaticMesh(const_cast<UStaticMesh*>(MMesh));
+				MaskMesh->SetVisibility(true);
+				
+				// Apply Material to Mask too? 
+				// User said "master piece should also take a matrial which it applies to material slot 0 of the pieces"
+				// Assuming consistent styling:
+				if (UMaterialInterface* Mat = StyleSet->GetSideMaterial(Color))
+				{
+					MaskMesh->SetMaterial(0, Mat);
+				}
+			}
+			else
+			{
+				MaskMesh->SetVisibility(false);
+			}
+		}
+		else
+		{
+			MaskMesh->SetVisibility(false);
+		}
+	}
 }
 
 void AChessPieceActor::SetMask(EPieceType NewMask)

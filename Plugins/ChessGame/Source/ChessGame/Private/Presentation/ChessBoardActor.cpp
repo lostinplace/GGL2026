@@ -318,26 +318,24 @@ void AChessBoardActor::SpawnPieceActor(int32 PieceId, EPieceType Type, EPieceCol
 			
 			// Setup Masking
 			const FPieceInstance* Piece = GameModel->BoardState->Pieces.Find(PieceId);
-			if (Piece && Piece->MaskType != EPieceType::None)
+			
+			// Determine Observer Side (MVP: White)
+			EPieceColor ObserverSide = EPieceColor::White; 
+			
+			EPieceType BodyType = Type;
+			EPieceType MaskType = EPieceType::None;
+
+			if (Piece)
 			{
-				// Determine Observer Side
-				EPieceColor ObserverSide = EPieceColor::White; // Default
-				
-				// In a real network setting, check UChessGameSubsystem or PC->PlayerState->Team
-				// For now, MVP assumes Standalone/Listening Server is White context or "God"
-				// But to TEST masking, we need to pretend we are the OPPONENT?
-				// If I am White, and I spawn a Black Piece with Mask, I (White) am the Observer.
-				// So ObserverSide = My Side.
-				
-				APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
-				// MVP: Assume Player 0 is White.
-				
-				EPieceType VisType = Piece->GetVisualType(ObserverSide);
-				if (VisType != Type)
+				MaskType = Piece->MaskType;
+				if (Color != ObserverSide && MaskType != EPieceType::None)
 				{
-					NewPiece->UpdateVisuals(StyleSet, VisType);
+					BodyType = EPieceType::Pawn;
 				}
 			}
+
+			// Apply Visuals
+			NewPiece->UpdateVisuals(StyleSet, BodyType, MaskType);
 
 			PieceActors.Add(PieceId, NewPiece);
 		}
@@ -427,11 +425,23 @@ void AChessBoardActor::OnPieceMaskChanged(int32 PieceId, EPieceType NewMask)
 				EPieceColor ObserverSide = EPieceColor::White;
 				APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0); 
 				
-				// Calculate Visual Type
-				EPieceType VisType = Piece->GetVisualType(ObserverSide);
+				// Calculate Visuals
+				// Owner: Real base type + mask
+				// Opponent: Pawn base type (if masked) + mask. 
+				// Note: If no mask, both see Real Type.
 				
-				// Update Actor
-				Actor->UpdateVisuals(StyleSet, VisType);
+				EPieceType BodyType = Piece->Type;
+				EPieceType MaskType = Piece->MaskType;
+				
+				if (Piece->Color != ObserverSide && MaskType != EPieceType::None)
+				{
+					// Opponent View of Masked Piece
+					// "pawn with its mask"
+					BodyType = EPieceType::Pawn; 
+				}
+				
+				// Apply
+				Actor->UpdateVisuals(StyleSet, BodyType, MaskType);
 				
 				// Also notify actor of mask change (sound/fx)
 				Actor->OnMaskChanged(NewMask);

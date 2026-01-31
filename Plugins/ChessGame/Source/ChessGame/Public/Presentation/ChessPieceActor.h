@@ -28,6 +28,13 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Chess")
 	class AChessMoveRule* MoveRuleInstance;
 
+	// Visual Components
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
+	class USkeletalMeshComponent* BaseMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
+	class UStaticMeshComponent* MaskMesh;
+
 	// Selection Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Selection")
 	class USelectableChessPieceComponent* SelectionComponent;
@@ -61,7 +68,7 @@ public:
 	void OnSelectionChanged(bool bSelected);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void UpdateVisuals(const class UChessPieceStyleSet* StyleSet, EPieceType VisualType);
+	void UpdateVisuals(const class UChessPieceStyleSet* StyleSet, EPieceType BodyType, EPieceType MaskType);
 
 public:
 	virtual void Init(int32 InPieceId, EPieceType InType, EPieceColor InColor);

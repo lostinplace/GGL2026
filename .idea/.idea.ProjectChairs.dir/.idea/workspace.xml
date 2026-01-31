@@ -9,6 +9,12 @@
   <component name="ChangeListManager">
     <list default="true" id="c5dd709e-14a5-4d0a-afc9-9825d0e3b550" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.ProjectChairs.dir/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.ProjectChairs.dir/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/Private/Presentation/ChessBoardActor.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/Private/Presentation/ChessBoardActor.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/Private/Presentation/ChessPieceActor.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/Private/Presentation/ChessPieceActor.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/Private/Presentation/MaskedChessPiece.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/Public/Presentation/ChessPieceActor.h" beforeDir="false" afterPath="$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/Public/Presentation/ChessPieceActor.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/Public/Presentation/ChessPieceStyleSet.h" beforeDir="false" afterPath="$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/Public/Presentation/ChessPieceStyleSet.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Plugins/ChessGame/Source/ChessGame/Public/Presentation/MaskedChessPiece.h" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -26,6 +32,13 @@
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="HighlightingSettingsPerFile">
+    <setting file="cidr-memory-view://14" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/../../Program Files/Epic Games/UE_5.7/Engine/Source/Editor/UnrealEd/Private/Commandlets/MergeShaderPipelineCachesCommandlet.cpp" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/../../Program Files/Epic Games/UE_5.7/Engine/Source/Runtime/Core/Public/Containers/Map.h.inl" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/../../Program Files/Epic Games/UE_5.7/Engine/Source/Runtime/Core/Public/Delegates/DelegateSignatureImpl.inl" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/../../Program Files/Epic Games/UE_5.7/Engine/Source/Runtime/Core/Public/UObject/ScriptDelegates.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/../../Program Files/Epic Games/UE_5.7/Engine/Source/Runtime/Engine/Private/Components/StaticMeshComponent.cpp" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/../../Program Files/Epic Games/UE_5.7/Engine/Source/Runtime/Experimental/Voronoi/Private/voro++/src/c_loops.hh" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/ProjectChairs.uproject" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="McpProjectServerCommands">
