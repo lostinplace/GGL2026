@@ -9,6 +9,21 @@
 #include "Logic/ChessData.h"
 #include "ProjectChairsPlayerState.generated.h"
 
+class AProjectChairsChessPieceActor;
+
+/**
+ * Enum representing the current card interaction mode.
+ */
+UENUM(BlueprintType)
+enum class ECardInteractionMode : uint8
+{
+	None            UMETA(DisplayName = "None"),           // Normal chess mode
+	SelectingTarget UMETA(DisplayName = "Selecting Target") // Card selected, waiting for target
+};
+
+/** Delegate broadcast when the selected card or interaction mode changes */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSelectedCardChanged, UCardObject*, SelectedCard, ECardInteractionMode, Mode);
+
 /**
  * Custom PlayerState that manages the player's deck and hand of cards.
  * Also stores the assigned chess color for multiplayer chess games.
@@ -84,6 +99,40 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cards")
 	void ReshuffleDiscardIntoDeck();
 
+	// Card Selection System
+
+	/** Select a card from the hand and enter target selection mode */
+	UFUNCTION(BlueprintCallable, Category = "Card Selection")
+	void SelectCard(UCardObject* Card);
+
+	/** Clear the current card selection and return to normal mode */
+	UFUNCTION(BlueprintCallable, Category = "Card Selection")
+	void ClearCardSelection();
+
+	/** Get the currently selected card */
+	UFUNCTION(BlueprintCallable, Category = "Card Selection")
+	UCardObject* GetSelectedCard() const { return SelectedCard; }
+
+	/** Get the current card interaction mode */
+	UFUNCTION(BlueprintCallable, Category = "Card Selection")
+	ECardInteractionMode GetCardInteractionMode() const { return CardInteractionMode; }
+
+	/** Check if we are currently in card targeting mode */
+	UFUNCTION(BlueprintCallable, Category = "Card Selection")
+	bool IsSelectingCardTarget() const { return CardInteractionMode == ECardInteractionMode::SelectingTarget; }
+
+	/**
+	 * Attempt to apply the selected card to a target chess piece.
+	 * Validates the target based on card's target type and player's assigned color.
+	 * @return True if the card was successfully applied, false otherwise
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Card Selection")
+	bool TryApplySelectedCardToTarget(AProjectChairsChessPieceActor* TargetPiece);
+
+	/** Broadcast when the selected card or mode changes */
+	UPROPERTY(BlueprintAssignable, Category = "Card Selection")
+	FOnSelectedCardChanged OnSelectedCardChanged;
+
 protected:
 	/** Create a card object from a data asset */
 	UCardObject* CreateCardFromDataAsset(UCardDataAsset* CardData);
@@ -107,4 +156,14 @@ protected:
 	/** The discard pile */
 	UPROPERTY(BlueprintReadOnly, Category = "Cards")
 	TArray<UCardObject*> DiscardPile;
+
+	// Card Selection State
+
+	/** The currently selected card (if any) */
+	UPROPERTY(BlueprintReadOnly, Category = "Card Selection")
+	UCardObject* SelectedCard;
+
+	/** The current card interaction mode */
+	UPROPERTY(BlueprintReadOnly, Category = "Card Selection")
+	ECardInteractionMode CardInteractionMode;
 };
