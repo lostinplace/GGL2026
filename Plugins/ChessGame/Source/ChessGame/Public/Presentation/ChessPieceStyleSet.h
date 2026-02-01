@@ -30,6 +30,20 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visuals")
 	UMaterialInterface* BlackMaterial;
 
+	// Board Assets
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Board")
+	UStaticMesh* BoardTileMesh;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Board")
+	UMaterialInterface* BoardMaterialWhite;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Board")
+	UMaterialInterface* BoardMaterialBlack;
+
+	// Highlight Assets
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Board")
+	TSubclassOf<AActor> HighlightActorClass;
+
 	UFUNCTION(BlueprintCallable)
 	TSubclassOf<AChessPieceActor> GetPieceClass(EPieceColor Color, EPieceType Type) const
 	{

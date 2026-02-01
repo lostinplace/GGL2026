@@ -3,6 +3,7 @@
 #include "Net/UnrealNetwork.h"
 #include "DrawDebugHelpers.h"
 #include "DrawDebugHelpers.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Logic/ChessGameSubsystem.h" // Include Subsystem
 #include "Presentation/ChessPlayerController.h"
 #include "Presentation/SelectableChessPieceComponent.h" // Required for Graveyard logic
@@ -12,6 +13,13 @@ AChessBoardActor::AChessBoardActor()
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	
+	BoardTilesWhite = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("BoardTilesWhite"));
+	BoardTilesWhite->SetupAttachment(RootComponent);
+
+	BoardTilesBlack = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("BoardTilesBlack"));
+	BoardTilesBlack->SetupAttachment(RootComponent);
+
 	// SelectedCoord removed
 }
 
@@ -39,7 +47,7 @@ void AChessBoardActor::Tick(float DeltaTime)
 		FString SideStr = (GameModel->BoardState->SideToMove == EPieceColor::White) ? TEXT("White") : TEXT("Black");
 		if (GEngine)
 		{
-			GEngine->AddOnScreenDebugMessage(100, 0.0f, FColor::Yellow, FString::Printf(TEXT("Current Player: %s"), *SideStr));
+			// GEngine->AddOnScreenDebugMessage(100, 0.0f, FColor::Yellow, FString::Printf(TEXT("Current Player: %s"), *SideStr));
 		}
 	}
 
@@ -97,6 +105,7 @@ void AChessBoardActor::BeginPlay()
 	{
 		ReplicatedState = GameModel->BoardState->ToStruct();
 	}
+	SpawnBoardGrid();
 	SyncVisuals();
 }
 
@@ -590,31 +599,48 @@ void AChessBoardActor::OnRep_ReplicatedState()
 
 void AChessBoardActor::OnHighlightMoves_Implementation(const TArray<FChessMove>& Moves)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[ChessBoard] Drawing Highlights for %d Moves"), Moves.Num());
+	if (!StyleSet || !StyleSet->HighlightActorClass) return;
 
-	// Default Debug Implementation
+	OnClearHighlights(); // Clear existing first
+
 	for (const FChessMove& Move : Moves)
 	{
 		FVector Center = CoordToWorld(Move.To);
-		// Draw a solid box (semi-transparent green), Persistent = true
-		DrawDebugSolidBox(GetWorld(), Center, FVector(SquareSize*0.4f, SquareSize*0.4f, 2.0f), FColor(0, 255, 0, 100), true);
+		Center.Z = PieceHeightOffset + 1.0f; // Slightly above board/piece base? Or at PieceHeightOffset.
+
+		FActorSpawnParameters Params;
+		Params.Owner = this;
+		
+		if (AActor* NewActor = GetWorld()->SpawnActor<AActor>(StyleSet->HighlightActorClass, Center, FRotator::ZeroRotator, Params))
+		{
+			// Auto-Scale: Assume the actor is designed for 100x100 units (Standard Unreal)
+			// Adjust scale if SquareSize is different.
+			float Scale = SquareSize / 100.0f;
+			NewActor->SetActorScale3D(FVector(Scale, Scale, Scale));
+
+			// Fix for Attachment Error: Ensure Root is Movable so it can attach to the Board
+			if (USceneComponent* Root = NewActor->GetRootComponent())
+			{
+				Root->SetMobility(EComponentMobility::Movable);
+			}
+
+			// Disable Collision so they don't block clicks
+			NewActor->SetActorEnableCollision(false);
+
+			// Attach to board so they move with it
+			NewActor->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+			ActiveHighlightActors.Add(NewActor);
+		}
 	}
 }
 
 void AChessBoardActor::OnClearHighlights_Implementation()
 {
-	// DrawDebugSolidBox doesn't have a specific "Clear" unless we use persistent lines and flush.
-	// But since we use Lifetime=-1 (one frame? no, -1 is default? Wait.)
-	// Default is -1.0f which means "Lifetime of line" ?? No.
-	// If bPersistent is false and Lifetime is -1, it lasts for one frame? 
-	// Actually DrawDebugSolidBox usually persists if bPersistent is true.
-	// If false, it's one frame.
-	
-	// Wait, if we draw on "Click", it won't persist if it's one frame.
-	// We need it to persist until cleared.
-	// So we should use bPersistent = true? And FlushDebugStrings? No, FlushPersistentDebugLines.
-	
-	FlushPersistentDebugLines(GetWorld());
+	for (AActor* Actor : ActiveHighlightActors)
+	{
+		if (Actor) Actor->Destroy();
+	}
+	ActiveHighlightActors.Empty();
 }
 
 EPieceColor AChessBoardActor::GetObserverSide() const
@@ -670,4 +696,58 @@ void AChessBoardActor::UpdatePieceVisuals(const FPieceInstance& Piece, AChessPie
 	}
 
 	Actor->UpdateVisuals(StyleSet, BodyType, MaskType);
+}
+
+void AChessBoardActor::SpawnBoardGrid()
+{
+	if (!StyleSet) return;
+	if (!BoardTilesWhite || !BoardTilesBlack) return;
+
+	// Reset
+	BoardTilesWhite->ClearInstances();
+	BoardTilesBlack->ClearInstances();
+
+	// Set Assets
+	if (StyleSet->BoardTileMesh)
+	{
+		BoardTilesWhite->SetStaticMesh(StyleSet->BoardTileMesh);
+		BoardTilesBlack->SetStaticMesh(StyleSet->BoardTileMesh);
+	}
+
+	if (StyleSet->BoardMaterialWhite) BoardTilesWhite->SetMaterial(0, StyleSet->BoardMaterialWhite);
+	if (StyleSet->BoardMaterialBlack) BoardTilesBlack->SetMaterial(0, StyleSet->BoardMaterialBlack);
+
+	// Generate 8x8 Grid
+	for (int32 File = 0; File < 8; ++File)
+	{
+		for (int32 Rank = 0; Rank < 8; ++Rank)
+		{
+			FBoardCoord Coord(File, Rank);
+			FVector Center = CoordToWorld(Coord);
+			// Tile should be at floor level, maybe offset Z? 
+			// Assuming Mesh origin is center.
+			// PieceHeightOffset is for pieces. Tiles should be below pieces.
+			Center.Z -= 1.0f; // Minimal offset to avoid Z-fighting with debug lines if any
+
+			FTransform Trans(Center);
+			
+			bool bIsBlack = (File + Rank) % 2 != 0; // A1=0,0 (Even) -> Black? 
+			// Standard Chess: A1 is Black (Dark). A2 is White.
+			// (0,0): 0+0=0 Even. 
+			// Wait, A1 (Left Corner) is usually BLACK? No, "White on Right" rule.
+			// H1 (Right corner for White) is White.
+			// A1 (Left corner for White) is Black.
+			// So (0,0) Sum=0 Even -> Black?
+			// Let's stick to standard checkers convention.
+			
+			if (bIsBlack)
+			{
+				BoardTilesBlack->AddInstance(Trans);
+			}
+			else
+			{
+				BoardTilesWhite->AddInstance(Trans);
+			}
+		}
+	}
 }

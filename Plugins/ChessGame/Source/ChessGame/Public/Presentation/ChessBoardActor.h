@@ -121,4 +121,16 @@ protected:
 	TArray<AChessPieceActor*> GraveyardBlack;
 
 	void AddToGraveyard(AChessPieceActor* Actor);
+
+	// Board Visualization
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Board")
+	class UInstancedStaticMeshComponent* BoardTilesWhite;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Board")
+	class UInstancedStaticMeshComponent* BoardTilesBlack;
+
+	UPROPERTY()
+	TArray<AActor*> ActiveHighlightActors;
+
+	void SpawnBoardGrid();
 };
