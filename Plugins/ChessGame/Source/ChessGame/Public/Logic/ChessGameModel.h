@@ -46,6 +46,10 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnPieceMaskChanged OnPieceMaskChanged;
 
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCheckStatusChanged, bool, bInCheck, EPieceColor, SideInCheck);
+	UPROPERTY(BlueprintAssignable)
+	FOnCheckStatusChanged OnCheckStatusChanged;
+
 	// Configuration
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chess Configuration")
 	EChessInitMode InitMode = EChessInitMode::Standard;

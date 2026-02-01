@@ -99,6 +99,7 @@ void AChessBoardActor::BeginPlay()
 	GameModel->OnPieceCaptured.AddDynamic(this, &AChessBoardActor::OnPieceCaptured);
 	GameModel->OnGameEnded.AddDynamic(this, &AChessBoardActor::OnGameEnded);
 	GameModel->OnPieceMaskChanged.AddDynamic(this, &AChessBoardActor::OnPieceMaskChanged);
+	GameModel->OnCheckStatusChanged.AddDynamic(this, &AChessBoardActor::OnCheckStatusChanged);
 
 	// Initial Sync
 	if (HasAuthority())
@@ -534,8 +535,48 @@ void AChessBoardActor::AddToGraveyard(AChessPieceActor* Actor)
 
 void AChessBoardActor::OnGameEnded(bool bIsDraw, EPieceColor Winner)
 {
-	// Log or Show UI
-	// UE_LOG(LogTemp, Warning, TEXT("Game Over. Draw: %d, Winner: %d"), bIsDraw, (int32)Winner);
+	UE_LOG(LogTemp, Warning, TEXT("Game Over. Draw: %d, Winner: %d"), bIsDraw, (int32)Winner);
+
+	FString Message;
+	if (bIsDraw)
+	{
+		Message = TEXT("GAME OVER: Stalemate (Draw)");
+	}
+	else
+	{
+		FString WinnerStr = (Winner == EPieceColor::White) ? TEXT("White") : TEXT("Black");
+		Message = FString::Printf(TEXT("CHECKMATE! %s Wins!"), *WinnerStr);
+	}
+
+	// Forward to Local Player Controller
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		if (AChessPlayerController* ChessPC = Cast<AChessPlayerController>(PC))
+		{
+			ChessPC->OnGameStatusMessage(FText::FromString(Message));
+		}
+	}
+}
+
+void AChessBoardActor::OnCheckStatusChanged(bool bInCheck, EPieceColor SideInCheck)
+{
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		if (AChessPlayerController* ChessPC = Cast<AChessPlayerController>(PC))
+		{
+			if (bInCheck)
+			{
+				FString SideStr = (SideInCheck == EPieceColor::White) ? TEXT("White") : TEXT("Black");
+				FString Message = FString::Printf(TEXT("CHECK! %s King is under attack!"), *SideStr);
+				ChessPC->OnGameStatusMessage(FText::FromString(Message));
+			}
+			else
+			{
+				// Clear message if not in check
+				ChessPC->OnGameStatusMessage(FText::GetEmpty());
+			}
+		}
+	}
 }
 
 void AChessBoardActor::OnPieceMaskChanged(int32 PieceId, EPieceType NewMask)

@@ -154,13 +154,16 @@ void UChessGameModel::ApplyMoveInternal(const FChessMove& Move)
 	// Switch Turn
 	BoardState->SideToMove = (BoardState->SideToMove == EPieceColor::White) ? EPieceColor::Black : EPieceColor::White;
 
+	// Calculate Check Status
+	bool bInCheck = RuleSet->IsKingInCheck(BoardState, BoardState->SideToMove);
+	BoardState->bInCheck = bInCheck;
+
+	// Broadcast updates
 	OnMoveApplied.Broadcast(Move);
-	OnTurnChanged.Broadcast(BoardState->SideToMove);
+	OnTurnChanged.Broadcast(BoardState->SideToMove); // Notify Turn First
+	OnCheckStatusChanged.Broadcast(bInCheck, BoardState->SideToMove); // Notify Check Status
 
 	// Check Game End (Checkmate/Stalemate)
-	// Algorithm: Generate all legal moves for current side. If 0 -> Game Over.
-	// If InCheck -> Checkmate. Else Stalemate.
-	// Simple check:
 	bool bAnyLegalMove = false;
 	for (const auto& Pair : BoardState->Pieces)
 	{
@@ -178,17 +181,24 @@ void UChessGameModel::ApplyMoveInternal(const FChessMove& Move)
 
 	if (!bAnyLegalMove)
 	{
-		bool bInCheck = RuleSet->IsKingInCheck(BoardState, BoardState->SideToMove);
 		if (bInCheck)
 		{
 			// Checkmate
-			// Winner is opposite side
+			// Winner is opposite side (who moved last)
 			EPieceColor Winner = (BoardState->SideToMove == EPieceColor::White) ? EPieceColor::Black : EPieceColor::White;
+			
+			BoardState->bIsGameOver = true;
+			BoardState->bIsDraw = false;
+			BoardState->Winner = Winner;
+			
 			OnGameEnded.Broadcast(false, Winner);
 		}
 		else
 		{
 			// Stalemate
+			BoardState->bIsGameOver = true;
+			BoardState->bIsDraw = true;
+			
 			OnGameEnded.Broadcast(true, EPieceColor::White); // Draw
 		}
 	}

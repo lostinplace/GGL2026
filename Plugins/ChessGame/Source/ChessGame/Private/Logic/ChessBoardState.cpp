@@ -13,6 +13,11 @@ void UChessBoardState::InitializeEmpty()
 	bHasEnPassantTarget = false;
 	HalfmoveClock = 0;
 	FullmoveNumber = 1;
+
+	bIsGameOver = false;
+	bIsDraw = false;
+	bInCheck = false;
+	Winner = EPieceColor::White;
 }
 
 int32 UChessBoardState::GetPieceIdAt(FBoardCoord Coord) const
@@ -63,13 +68,6 @@ void UChessBoardState::MovePiece(int32 PieceId, FBoardCoord From, FBoardCoord To
 void UChessBoardState::RemovePiece(int32 PieceId)
 {
 	Pieces.Remove(PieceId);
-	// Note: Caller is responsible for clearing the Square if needed, 
-	// but usually RemovePiece is called after a capture where the square is overwritten
-	// or during initialization.
-	// If just removing from board, we might need to scan squares.
-	// For efficiency, we assume the caller handles the Square update (SetPieceIdAt) 
-	// or we loop through squares to clear it if strictly needed. 
-	// But usually SetPieceIdAt(To, PieceId) overwrites the captured piece ID on the square.
 }
 
 const FPieceInstance* UChessBoardState::GetPiece(int32 PieceId) const
@@ -87,6 +85,12 @@ FChessBoardStateData UChessBoardState::ToStruct() const
 	Data.EnPassantTarget = EnPassantTarget;
 	Data.HalfmoveClock = HalfmoveClock;
 	Data.FullmoveNumber = FullmoveNumber;
+	
+	Data.bIsGameOver = bIsGameOver;
+	Data.bIsDraw = bIsDraw;
+	Data.Winner = Winner;
+	Data.bInCheck = bInCheck;
+
 	return Data;
 }
 
@@ -103,5 +107,10 @@ void UChessBoardState::FromStruct(const FChessBoardStateData& Data)
 	EnPassantTarget = Data.EnPassantTarget;
 	HalfmoveClock = Data.HalfmoveClock;
 	FullmoveNumber = Data.FullmoveNumber;
+
+	bIsGameOver = Data.bIsGameOver;
+	bIsDraw = Data.bIsDraw;
+	Winner = Data.Winner;
+	bInCheck = Data.bInCheck;
 }
 

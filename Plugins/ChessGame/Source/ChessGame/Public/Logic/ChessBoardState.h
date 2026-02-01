@@ -42,6 +42,19 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	int32 FullmoveNumber;
 
+	// Game Status
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsGameOver = false;
+
+	UPROPERTY(BlueprintReadOnly)
+	EPieceColor Winner = EPieceColor::White;
+	
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsDraw = false;
+
+	UPROPERTY(BlueprintReadOnly)
+	bool bInCheck = false;
+
 	// Helpers
 	UFUNCTION(BlueprintCallable)
 	int32 GetPieceIdAt(FBoardCoord Coord) const;

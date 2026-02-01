@@ -78,6 +78,9 @@ public:
 	UFUNCTION()
 	void OnPieceMaskChanged(int32 PieceId, EPieceType NewMask);
 
+	UFUNCTION()
+	void OnCheckStatusChanged(bool bInCheck, EPieceColor SideInCheck);
+
 	UFUNCTION(BlueprintPure)
 	EPieceColor GetObserverSide() const;
 

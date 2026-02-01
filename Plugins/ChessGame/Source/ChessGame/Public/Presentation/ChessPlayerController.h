@@ -52,6 +52,10 @@ public:
 	/** Event triggered when the turn changes (active player changes) */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Chess")
 	void OnTurnChanged(EPieceColor NewSideToMove);
+
+	/** Single event to relay rich text status messages (Check, Mate, Draw, etc.) */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Chess")
+	void OnGameStatusMessage(const FText& Message);
 	// The board we are currently interacting with
 	// We can find this dynamically or set it
 	UPROPERTY(Transient, BlueprintReadWrite, Category = "Chess")

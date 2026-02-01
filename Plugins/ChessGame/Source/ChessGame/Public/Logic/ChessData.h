@@ -242,6 +242,9 @@ struct CHESSGAME_API FChessBoardStateData
 	UPROPERTY(BlueprintReadOnly)
 	bool bIsDraw = false;
 
+	UPROPERTY(BlueprintReadOnly)
+	bool bInCheck = false;
+
 	FChessBoardStateData()
 	{
 		Squares.Init(-1, 64);
