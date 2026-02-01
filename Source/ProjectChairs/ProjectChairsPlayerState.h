@@ -158,7 +158,7 @@ protected:
 
 	/** Maximum number of cards allowed in the hand */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cards")
-	int32 MaxHandSize = 7;
+	int32 MaxHandSize = 5;
 
 	/** The player's current deck (cards not yet drawn) */
 	UPROPERTY(BlueprintReadOnly, Category = "Cards")

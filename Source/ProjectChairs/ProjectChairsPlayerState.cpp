@@ -78,6 +78,13 @@ void AProjectChairsPlayerState::ShuffleDeck()
 
 UCardObject* AProjectChairsPlayerState::DrawCard()
 {
+	// Check hand limit first
+	if (Hand.Num() >= MaxHandSize)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Cards] Cannot draw: Hand is full (%d/%d)"), Hand.Num(), MaxHandSize);
+		return nullptr;
+	}
+
 	if (Deck.Num() == 0)
 	{
 		return nullptr;
@@ -97,6 +104,13 @@ void AProjectChairsPlayerState::DrawCards(int32 Count)
 {
 	for (int32 i = 0; i < Count; ++i)
 	{
+		if (Hand.Num() >= MaxHandSize)
+		{
+			// Hand is full
+			UE_LOG(LogTemp, Log, TEXT("[Cards] Stopped drawing: Hand is full (%d/%d)"), Hand.Num(), MaxHandSize);
+			break;
+		}
+
 		if (!DrawCard())
 		{
 			// Deck is empty

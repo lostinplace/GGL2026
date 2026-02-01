@@ -7,6 +7,7 @@
 #include "CardSystem/CardTargetHighlightComponent.h"
 #include "Presentation/ChessBoardActor.h"
 #include "Presentation/ChessPieceActor.h"
+#include "Logic/ChessBoardState.h"
 #include "Presentation/SelectableChessPieceComponent.h"
 #include "EnhancedInputComponent.h"
 
@@ -73,7 +74,7 @@ void AProjectChairsChessPlayerController::OnProjectChairsMouseClick()
 
 		// Get the hit location
 		FHitResult Hit;
-		GetHitResultUnderCursor(ECC_Visibility, false, Hit);
+		GetHitResultUnderCursor(ECC_Visibility, true, Hit);
 
 		if (Hit.bBlockingHit)
 		{
@@ -201,29 +202,43 @@ bool AProjectChairsChessPlayerController::TryHandleCardTargeting(const FVector& 
 
 AChessPieceActor* AProjectChairsChessPlayerController::FindPieceAtLocation(const FVector& HitLocation)
 {
-	// Use a raycast to find the piece directly
-	FHitResult Hit;
-	GetHitResultUnderCursor(ECC_Visibility, false, Hit);
-
-	if (!Hit.bBlockingHit || !Hit.GetActor())
+	// Use coordinate-based lookup instead of relying on hitting the piece actor directly
+	// This matches how normal piece selection works
+	if (!CurrentBoard || !CurrentBoard->GameModel || !CurrentBoard->GameModel->BoardState)
 	{
-		UE_LOG(LogTemp, Log, TEXT("[CardController] FindPieceAtLocation: No hit"));
+		UE_LOG(LogTemp, Log, TEXT("[CardController] FindPieceAtLocation: No valid board"));
 		return nullptr;
 	}
 
-	AActor* HitActor = Hit.GetActor();
-	UE_LOG(LogTemp, Log, TEXT("[CardController] FindPieceAtLocation: Hit actor: %s (Class: %s)"),
-		*HitActor->GetName(), *HitActor->GetClass()->GetName());
+	// Convert world location to board coordinate
+	FBoardCoord Coord = CurrentBoard->WorldToCoord(HitLocation);
 
-	// Check if we hit a selectable chess piece
-	if (USelectableChessPieceComponent* Selectable = USelectableChessPieceComponent::FindSelectableComponent(HitActor))
+	if (!Coord.IsValid())
 	{
-		// The actor has a selectable component, cast to chess piece
-		return Cast<AChessPieceActor>(HitActor);
+		UE_LOG(LogTemp, Log, TEXT("[CardController] FindPieceAtLocation: Invalid coordinate"));
+		return nullptr;
 	}
 
-	// Also try direct cast in case the selectable component check fails
-	return Cast<AChessPieceActor>(HitActor);
+	UE_LOG(LogTemp, Log, TEXT("[CardController] FindPieceAtLocation: Coord %d, %d"), Coord.File, Coord.Rank);
+
+	// Get the piece ID at this coordinate
+	int32 PieceId = CurrentBoard->GameModel->BoardState->GetPieceIdAt(Coord);
+
+	if (PieceId == -1)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[CardController] FindPieceAtLocation: No piece at coordinate"));
+		return nullptr;
+	}
+
+	// Look up the piece actor
+	if (AChessPieceActor** PieceActorPtr = CurrentBoard->PieceActors.Find(PieceId))
+	{
+		UE_LOG(LogTemp, Log, TEXT("[CardController] FindPieceAtLocation: Found piece %s"), *(*PieceActorPtr)->GetName());
+		return *PieceActorPtr;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[CardController] FindPieceAtLocation: Piece ID %d not found in PieceActors"), PieceId);
+	return nullptr;
 }
 
 AProjectChairsPlayerState* AProjectChairsChessPlayerController::GetProjectChairsPlayerState() const
