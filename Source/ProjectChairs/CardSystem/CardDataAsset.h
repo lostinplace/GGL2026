@@ -6,6 +6,7 @@
 #include "Engine/DataAsset.h"
 #include "CardTypes.h"
 #include "CardEffect.h"
+#include "Effects/ChessPieceEffect.h"
 #include "CardDataAsset.generated.h"
 
 /**
@@ -36,4 +37,8 @@ public:
 	/** Who this card can target */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Card")
 	ETargetType TargetType;
+
+	/** The chess piece effect to apply when targeting a chess piece */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Card")
+	TSubclassOf<UChessPieceEffect> ChessPieceEffectClass;
 };
