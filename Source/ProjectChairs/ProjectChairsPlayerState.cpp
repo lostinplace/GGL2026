@@ -3,7 +3,9 @@
 #include "ProjectChairsPlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "Presentation/ChessPieceActor.h"
+#include "Presentation/ChessBoardActor.h"
 #include "CardSystem/Effects/ChessPieceEffectComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 AProjectChairsPlayerState::AProjectChairsPlayerState()
 	: DefaultDeckConfiguration(nullptr)
@@ -245,6 +247,24 @@ void AProjectChairsPlayerState::SelectCard(UCardObject* Card)
 		return;
 	}
 
+	// Check if it's the player's turn
+	TArray<AActor*> BoardActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AChessBoardActor::StaticClass(), BoardActors);
+	if (BoardActors.Num() > 0)
+	{
+		AChessBoardActor* Board = Cast<AChessBoardActor>(BoardActors[0]);
+		if (Board && Board->GameModel && Board->GameModel->BoardState)
+		{
+			EPieceColor CurrentTurn = Board->GameModel->BoardState->SideToMove;
+			if (CurrentTurn != AssignedChessColor)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Cannot play card: Not your turn (Current: %d, Assigned: %d)"),
+					(int32)CurrentTurn, (int32)AssignedChessColor);
+				return;
+			}
+		}
+	}
+
 	// Validate that the card is valid
 	if (!Card || !Card->GetCardData())
 	{
@@ -307,6 +327,24 @@ bool AProjectChairsPlayerState::TryApplySelectedCardToTarget(AChessPieceActor* T
 		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] No selected card"));
 		ClearCardSelection();
 		return false;
+	}
+
+	// Check if it's the player's turn (safety check)
+	TArray<AActor*> BoardActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AChessBoardActor::StaticClass(), BoardActors);
+	if (BoardActors.Num() > 0)
+	{
+		AChessBoardActor* Board = Cast<AChessBoardActor>(BoardActors[0]);
+		if (Board && Board->GameModel && Board->GameModel->BoardState)
+		{
+			EPieceColor CurrentTurn = Board->GameModel->BoardState->SideToMove;
+			if (CurrentTurn != AssignedChessColor)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Cannot apply card: Not your turn"));
+				ClearCardSelection();
+				return false;
+			}
+		}
 	}
 
 	// Check if card data is in hand (by CardDataAsset, not pointer)
