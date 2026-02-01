@@ -19,13 +19,66 @@ void AProjectChairsPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimePrope
 
 	DOREPLIFETIME(AProjectChairsPlayerState, AssignedChessColor);
 	DOREPLIFETIME(AProjectChairsPlayerState, bHasAssignedColor);
+	DOREPLIFETIME(AProjectChairsPlayerState, ReplicatedHandData);
+}
+
+void AProjectChairsPlayerState::OnRep_HandData()
+{
+	UE_LOG(LogTemp, Log, TEXT("[Cards] OnRep_HandData called - ReplicatedHandData has %d cards"), ReplicatedHandData.Num());
+
+	// Rebuild local UCardObject instances from replicated data
+	RebuildHandFromReplicatedData();
+
+	UE_LOG(LogTemp, Log, TEXT("[Cards] Hand rebuilt with %d cards, broadcasting OnHandChanged"), Hand.Num());
+
+	// Broadcast hand change to update UI
+	OnHandChanged.Broadcast(Hand);
+}
+
+void AProjectChairsPlayerState::RebuildHandFromReplicatedData()
+{
+	// Clear existing hand
+	Hand.Empty();
+
+	// Recreate UCardObject instances from the replicated CardDataAsset references
+	for (UCardDataAsset* CardData : ReplicatedHandData)
+	{
+		if (CardData)
+		{
+			UCardObject* NewCard = CreateCardFromDataAsset(CardData);
+			if (NewCard)
+			{
+				Hand.Add(NewCard);
+			}
+		}
+	}
+}
+
+void AProjectChairsPlayerState::Server_ConsumeCard_Implementation(int32 CardIndex)
+{
+	if (Hand.IsValidIndex(CardIndex) && ReplicatedHandData.IsValidIndex(CardIndex))
+	{
+		UCardObject* Card = Hand[CardIndex];
+		Hand.RemoveAt(CardIndex);
+		ReplicatedHandData.RemoveAt(CardIndex);
+		DiscardPile.Add(Card);
+
+		// Mark that we've played a card this turn
+		bHasPlayedCardThisTurn = true;
+
+		// Broadcast hand change for server-side UI (OnRep won't fire on server)
+		OnHandChanged.Broadcast(Hand);
+
+		UE_LOG(LogTemp, Log, TEXT("[CardSelection] Server consumed card at index %d"), CardIndex);
+	}
 }
 
 void AProjectChairsPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (DefaultDeckConfiguration)
+	// Only initialize deck on the server - Hand will replicate to clients
+	if (HasAuthority() && DefaultDeckConfiguration)
 	{
 		InitializeDeckFromConfiguration(DefaultDeckConfiguration);
 		ShuffleDeck();
@@ -78,6 +131,13 @@ void AProjectChairsPlayerState::ShuffleDeck()
 
 UCardObject* AProjectChairsPlayerState::DrawCard()
 {
+	// If we're not the server, request the draw through RPC
+	if (!HasAuthority())
+	{
+		Server_DrawCard();
+		return nullptr; // Card will be added via replication
+	}
+
 	// Check hand limit first
 	if (Hand.Num() >= MaxHandSize)
 	{
@@ -94,10 +154,22 @@ UCardObject* AProjectChairsPlayerState::DrawCard()
 	UCardObject* DrawnCard = Deck.Pop();
 	Hand.Add(DrawnCard);
 
-	// Broadcast hand change
+	// Update replicated data (server-side only)
+	if (DrawnCard && DrawnCard->GetCardData())
+	{
+		ReplicatedHandData.Add(DrawnCard->GetCardData());
+	}
+
+	// Broadcast hand change (for server-side listeners)
 	OnHandChanged.Broadcast(Hand);
 
 	return DrawnCard;
+}
+
+void AProjectChairsPlayerState::Server_DrawCard_Implementation()
+{
+	// Server-side draw - this will replicate the Hand to the owning client
+	DrawCard();
 }
 
 void AProjectChairsPlayerState::DrawCards(int32 Count)
@@ -130,6 +202,10 @@ bool AProjectChairsPlayerState::PlayCardFromHand(UCardObject* Card)
 	if (Index != INDEX_NONE)
 	{
 		Hand.RemoveAt(Index);
+		if (ReplicatedHandData.IsValidIndex(Index))
+		{
+			ReplicatedHandData.RemoveAt(Index);
+		}
 		DiscardPile.Add(Card);
 
 		// Broadcast hand change
@@ -169,15 +245,33 @@ void AProjectChairsPlayerState::SelectCard(UCardObject* Card)
 		return;
 	}
 
-	// Validate that the card is in our hand
-	if (!Card || !Hand.Contains(Card))
+	// Validate that the card is valid
+	if (!Card || !Card->GetCardData())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] SelectCard failed: Card is null or not in hand"));
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] SelectCard failed: Card is null or has no data"));
 		return;
 	}
 
-	// If selecting the same card, deselect it
-	if (SelectedCard == Card)
+	// Check if card data is in hand (by CardDataAsset, not pointer)
+	// This handles the case where Hand was rebuilt with new UCardObject instances
+	bool bFoundInHand = false;
+	for (UCardObject* HandCard : Hand)
+	{
+		if (HandCard && HandCard->GetCardData() == Card->GetCardData())
+		{
+			bFoundInHand = true;
+			break;
+		}
+	}
+
+	if (!bFoundInHand)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] SelectCard failed: Card not in hand"));
+		return;
+	}
+
+	// If selecting the same card (by data), deselect it
+	if (SelectedCard && SelectedCard->GetCardData() == Card->GetCardData())
 	{
 		UE_LOG(LogTemp, Log, TEXT("[CardSelection] Same card selected, deselecting"));
 		ClearCardSelection();
@@ -208,9 +302,29 @@ bool AProjectChairsPlayerState::TryApplySelectedCardToTarget(AChessPieceActor* T
 	UE_LOG(LogTemp, Log, TEXT("[CardSelection] TryApplySelectedCardToTarget called"));
 
 	// Validate we have a selected card
-	if (!SelectedCard || !Hand.Contains(SelectedCard))
+	if (!SelectedCard)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] No selected card or card not in hand"));
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] No selected card"));
+		ClearCardSelection();
+		return false;
+	}
+
+	// Check if card data is in hand (by CardDataAsset, not pointer)
+	// This handles the case where Hand was rebuilt with new UCardObject instances
+	UCardDataAsset* SelectedCardData = SelectedCard->GetCardData();
+	bool bFoundInHand = false;
+	for (UCardObject* Card : Hand)
+	{
+		if (Card && Card->GetCardData() == SelectedCardData)
+		{
+			bFoundInHand = true;
+			break;
+		}
+	}
+
+	if (!bFoundInHand)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Selected card not found in hand"));
 		ClearCardSelection();
 		return false;
 	}
@@ -294,11 +408,48 @@ bool AProjectChairsPlayerState::TryApplySelectedCardToTarget(AChessPieceActor* T
 
 	UE_LOG(LogTemp, Log, TEXT("[CardSelection] Effect applied successfully!"));
 
-	// Mark that we've played a card this turn
-	bHasPlayedCardThisTurn = true;
+	// Find the card index by matching CardDataAsset (not pointer comparison)
+	// This handles the case where Hand was rebuilt with new UCardObject instances
+	int32 CardIndex = INDEX_NONE;
+	UCardDataAsset* SelectedCardDataTmp = SelectedCard->GetCardData();
+	for (int32 i = 0; i < Hand.Num(); ++i)
+	{
+		if (Hand[i] && Hand[i]->GetCardData() == SelectedCardDataTmp)
+		{
+			CardIndex = i;
+			break;
+		}
+	}
 
-	// Consume the card (move to discard pile)
-	PlayCardFromHand(SelectedCard);
+	// Consume the card via Server RPC (handles replication)
+	if (CardIndex != INDEX_NONE)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[CardSelection] Consuming card at index %d, HasAuthority=%s"),
+			CardIndex, HasAuthority() ? TEXT("true") : TEXT("false"));
+		Server_ConsumeCard(CardIndex);
+
+		// Optimistic local update for immediate UI feedback on client
+		// The server will also update and replicate, but this gives instant feedback
+		if (!HasAuthority())
+		{
+			UE_LOG(LogTemp, Log, TEXT("[CardSelection] Client: Applying optimistic update"));
+			if (Hand.IsValidIndex(CardIndex))
+			{
+				Hand.RemoveAt(CardIndex);
+				bHasPlayedCardThisTurn = true;
+				UE_LOG(LogTemp, Log, TEXT("[CardSelection] Client: Hand now has %d cards, broadcasting OnHandChanged"), Hand.Num());
+				OnHandChanged.Broadcast(Hand);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Client: CardIndex %d not valid for Hand size %d"), CardIndex, Hand.Num());
+			}
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Could not find card index for consumption!"));
+	}
 
 	// Clear selection
 	ClearCardSelection();

@@ -132,6 +132,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Card Selection")
 	void ResetCardPlayedThisTurn() { bHasPlayedCardThisTurn = false; }
 
+	/** Server RPC to consume a card after playing it */
+	UFUNCTION(Server, Reliable)
+	void Server_ConsumeCard(int32 CardIndex);
+
+	/** Server RPC to draw a card */
+	UFUNCTION(Server, Reliable)
+	void Server_DrawCard();
+
 	/**
 	 * Attempt to apply the selected card to a target chess piece.
 	 * Validates the target based on card's target type and player's assigned color.
@@ -164,9 +172,19 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Cards")
 	TArray<UCardObject*> Deck;
 
-	/** The player's current hand */
+	/** The player's current hand (local UCardObject instances) */
 	UPROPERTY(BlueprintReadOnly, Category = "Cards")
 	TArray<UCardObject*> Hand;
+
+	/** Replicated card data for the hand - clients recreate UCardObjects from this */
+	UPROPERTY(ReplicatedUsing = OnRep_HandData)
+	TArray<UCardDataAsset*> ReplicatedHandData;
+
+	UFUNCTION()
+	void OnRep_HandData();
+
+	/** Rebuild local Hand array from replicated data */
+	void RebuildHandFromReplicatedData();
 
 	/** The discard pile */
 	UPROPERTY(BlueprintReadOnly, Category = "Cards")
