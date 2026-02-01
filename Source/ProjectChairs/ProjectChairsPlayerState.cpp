@@ -2,13 +2,14 @@
 
 #include "ProjectChairsPlayerState.h"
 #include "Net/UnrealNetwork.h"
-#include "ProjectChairsChessPieceActor.h"
+#include "Presentation/ChessPieceActor.h"
 #include "CardSystem/Effects/ChessPieceEffectComponent.h"
 
 AProjectChairsPlayerState::AProjectChairsPlayerState()
 	: DefaultDeckConfiguration(nullptr)
 	, SelectedCard(nullptr)
 	, CardInteractionMode(ECardInteractionMode::None)
+	, bHasPlayedCardThisTurn(false)
 {
 }
 
@@ -138,15 +139,24 @@ UCardObject* AProjectChairsPlayerState::CreateCardFromDataAsset(UCardDataAsset* 
 
 void AProjectChairsPlayerState::SelectCard(UCardObject* Card)
 {
+	// Check if already played a card this turn
+	if (bHasPlayedCardThisTurn)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Already played a card this turn"));
+		return;
+	}
+
 	// Validate that the card is in our hand
 	if (!Card || !Hand.Contains(Card))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] SelectCard failed: Card is null or not in hand"));
 		return;
 	}
 
 	// If selecting the same card, deselect it
 	if (SelectedCard == Card)
 	{
+		UE_LOG(LogTemp, Log, TEXT("[CardSelection] Same card selected, deselecting"));
 		ClearCardSelection();
 		return;
 	}
@@ -154,6 +164,8 @@ void AProjectChairsPlayerState::SelectCard(UCardObject* Card)
 	// Update selection state
 	SelectedCard = Card;
 	CardInteractionMode = ECardInteractionMode::SelectingTarget;
+
+	UE_LOG(LogTemp, Log, TEXT("[CardSelection] Card selected: %s, Mode: SelectingTarget"), *Card->GetDisplayName().ToString());
 
 	// Broadcast the change
 	OnSelectedCardChanged.Broadcast(SelectedCard, CardInteractionMode);
@@ -168,11 +180,14 @@ void AProjectChairsPlayerState::ClearCardSelection()
 	OnSelectedCardChanged.Broadcast(nullptr, ECardInteractionMode::None);
 }
 
-bool AProjectChairsPlayerState::TryApplySelectedCardToTarget(AProjectChairsChessPieceActor* TargetPiece)
+bool AProjectChairsPlayerState::TryApplySelectedCardToTarget(AChessPieceActor* TargetPiece)
 {
+	UE_LOG(LogTemp, Log, TEXT("[CardSelection] TryApplySelectedCardToTarget called"));
+
 	// Validate we have a selected card
 	if (!SelectedCard || !Hand.Contains(SelectedCard))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] No selected card or card not in hand"));
 		ClearCardSelection();
 		return false;
 	}
@@ -180,13 +195,17 @@ bool AProjectChairsPlayerState::TryApplySelectedCardToTarget(AProjectChairsChess
 	// Validate target piece
 	if (!TargetPiece)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Target piece is null"));
 		return false;
 	}
+
+	UE_LOG(LogTemp, Log, TEXT("[CardSelection] Target piece: %s"), *TargetPiece->GetName());
 
 	// Get card data to check target type and effect
 	UCardDataAsset* CardData = SelectedCard->GetCardData();
 	if (!CardData)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Card has no CardData"));
 		return false;
 	}
 
@@ -194,12 +213,16 @@ bool AProjectChairsPlayerState::TryApplySelectedCardToTarget(AProjectChairsChess
 	ETargetType TargetType = CardData->TargetType;
 	EPieceColor PieceColor = TargetPiece->Color;
 
+	UE_LOG(LogTemp, Log, TEXT("[CardSelection] TargetType: %d, PieceColor: %d, PlayerColor: %d"),
+		(int32)TargetType, (int32)PieceColor, (int32)AssignedChessColor);
+
 	switch (TargetType)
 	{
 	case ETargetType::Self:
 		// Can only target own pieces
 		if (PieceColor != AssignedChessColor)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Invalid target: Self card but piece is not player's color"));
 			return false;
 		}
 		break;
@@ -208,6 +231,7 @@ bool AProjectChairsPlayerState::TryApplySelectedCardToTarget(AProjectChairsChess
 		// Can only target opponent's pieces
 		if (PieceColor == AssignedChessColor)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Invalid target: Enemy card but piece is player's color"));
 			return false;
 		}
 		break;
@@ -221,25 +245,34 @@ bool AProjectChairsPlayerState::TryApplySelectedCardToTarget(AProjectChairsChess
 	TSubclassOf<UChessPieceEffect> EffectClass = CardData->ChessPieceEffectClass;
 	if (!EffectClass)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Card '%s' has no ChessPieceEffectClass set"), *CardData->DisplayName.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Card '%s' has no ChessPieceEffectClass set"), *CardData->DisplayName.ToString());
 		return false;
 	}
 
-	// Apply the effect via the piece's effect component
-	UChessPieceEffectComponent* EffectComponent = TargetPiece->EffectComponent;
+	UE_LOG(LogTemp, Log, TEXT("[CardSelection] EffectClass: %s"), *EffectClass->GetName());
+
+	// Find the effect component on the piece
+	UChessPieceEffectComponent* EffectComponent = TargetPiece->FindComponentByClass<UChessPieceEffectComponent>();
 	if (!EffectComponent)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Target piece has no EffectComponent"));
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Target piece has no EffectComponent"));
 		return false;
 	}
+
+	UE_LOG(LogTemp, Log, TEXT("[CardSelection] Calling ApplyEffect..."));
 
 	// Apply the effect
 	UChessPieceEffect* AppliedEffect = EffectComponent->ApplyEffect(EffectClass);
 	if (!AppliedEffect)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Failed to apply effect from card '%s'"), *CardData->DisplayName.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("[CardSelection] Failed to apply effect from card '%s'"), *CardData->DisplayName.ToString());
 		return false;
 	}
+
+	UE_LOG(LogTemp, Log, TEXT("[CardSelection] Effect applied successfully!"));
+
+	// Mark that we've played a card this turn
+	bHasPlayedCardThisTurn = true;
 
 	// Consume the card (move to discard pile)
 	PlayCardFromHand(SelectedCard);

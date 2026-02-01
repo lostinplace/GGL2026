@@ -4,10 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Presentation/ChessPlayerController.h"
+#include "ProjectChairsPlayerState.h"
+#include "Logic/ChessData.h"
 #include "ProjectChairsChessPlayerController.generated.h"
 
 class AProjectChairsPlayerState;
-class AProjectChairsChessPieceActor;
+class AChessPieceActor;
+class UCardObject;
 
 /**
  * Project Chairs specific chess player controller that handles card targeting.
@@ -22,6 +25,7 @@ public:
 	AProjectChairsChessPlayerController();
 
 protected:
+	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
 
 	/** Our click handler that checks for card targeting first */
@@ -39,8 +43,27 @@ protected:
 	 * @param HitLocation The world location to check
 	 * @return The chess piece at that location, or nullptr if none found
 	 */
-	AProjectChairsChessPieceActor* FindPieceAtLocation(const FVector& HitLocation);
+	AChessPieceActor* FindPieceAtLocation(const FVector& HitLocation);
 
 	/** Get the ProjectChairs-specific player state */
 	AProjectChairsPlayerState* GetProjectChairsPlayerState() const;
+
+	/** Called when the selected card changes in PlayerState */
+	UFUNCTION()
+	void OnSelectedCardChanged(UCardObject* SelectedCard, ECardInteractionMode Mode);
+
+	/** Updates the card target highlights on all pieces based on the selected card */
+	void UpdateCardTargetHighlights(UCardObject* SelectedCard);
+
+	/** Clears all card target highlights */
+	void ClearCardTargetHighlights();
+
+	/** Called when a chess move is made - resets card played status for the player whose turn it now is */
+	void CheckAndResetCardPlayedOnTurnChange();
+
+	/** Tracks the last known side to move, for detecting turn changes */
+	EPieceColor LastKnownSideToMove;
+
+	/** Whether we've initialized LastKnownSideToMove */
+	bool bHasInitializedTurnTracking;
 };

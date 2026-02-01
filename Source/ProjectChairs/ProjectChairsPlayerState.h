@@ -9,7 +9,7 @@
 #include "Logic/ChessData.h"
 #include "ProjectChairsPlayerState.generated.h"
 
-class AProjectChairsChessPieceActor;
+class AChessPieceActor;
 
 /**
  * Enum representing the current card interaction mode.
@@ -121,13 +121,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Card Selection")
 	bool IsSelectingCardTarget() const { return CardInteractionMode == ECardInteractionMode::SelectingTarget; }
 
+	/** Check if the player has already played a card this turn */
+	UFUNCTION(BlueprintCallable, Category = "Card Selection")
+	bool HasPlayedCardThisTurn() const { return bHasPlayedCardThisTurn; }
+
+	/** Reset the card played flag (call when turn changes) */
+	UFUNCTION(BlueprintCallable, Category = "Card Selection")
+	void ResetCardPlayedThisTurn() { bHasPlayedCardThisTurn = false; }
+
 	/**
 	 * Attempt to apply the selected card to a target chess piece.
 	 * Validates the target based on card's target type and player's assigned color.
 	 * @return True if the card was successfully applied, false otherwise
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Card Selection")
-	bool TryApplySelectedCardToTarget(AProjectChairsChessPieceActor* TargetPiece);
+	bool TryApplySelectedCardToTarget(AChessPieceActor* TargetPiece);
 
 	/** Broadcast when the selected card or mode changes */
 	UPROPERTY(BlueprintAssignable, Category = "Card Selection")
@@ -166,4 +174,8 @@ protected:
 	/** The current card interaction mode */
 	UPROPERTY(BlueprintReadOnly, Category = "Card Selection")
 	ECardInteractionMode CardInteractionMode;
+
+	/** Whether the player has played a card this turn */
+	UPROPERTY(BlueprintReadOnly, Category = "Card Selection")
+	bool bHasPlayedCardThisTurn;
 };
