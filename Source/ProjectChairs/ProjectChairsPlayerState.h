@@ -24,6 +24,9 @@ enum class ECardInteractionMode : uint8
 /** Delegate broadcast when the selected card or interaction mode changes */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSelectedCardChanged, UCardObject*, SelectedCard, ECardInteractionMode, Mode);
 
+/** Delegate broadcast when the hand changes (cards added or removed) */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHandChanged, const TArray<UCardObject*>&, NewHand);
+
 /**
  * Custom PlayerState that manages the player's deck and hand of cards.
  * Also stores the assigned chess color for multiplayer chess games.
@@ -140,6 +143,10 @@ public:
 	/** Broadcast when the selected card or mode changes */
 	UPROPERTY(BlueprintAssignable, Category = "Card Selection")
 	FOnSelectedCardChanged OnSelectedCardChanged;
+
+	/** Broadcast when the hand changes (cards added or removed) */
+	UPROPERTY(BlueprintAssignable, Category = "Cards")
+	FOnHandChanged OnHandChanged;
 
 protected:
 	/** Create a card object from a data asset */

@@ -28,6 +28,7 @@ void AProjectChairsPlayerState::BeginPlay()
 	if (DefaultDeckConfiguration)
 	{
 		InitializeDeckFromConfiguration(DefaultDeckConfiguration);
+		ShuffleDeck();
 	}
 }
 
@@ -85,6 +86,10 @@ UCardObject* AProjectChairsPlayerState::DrawCard()
 	// Draw from the top of the deck (end of array)
 	UCardObject* DrawnCard = Deck.Pop();
 	Hand.Add(DrawnCard);
+
+	// Broadcast hand change
+	OnHandChanged.Broadcast(Hand);
+
 	return DrawnCard;
 }
 
@@ -112,6 +117,10 @@ bool AProjectChairsPlayerState::PlayCardFromHand(UCardObject* Card)
 	{
 		Hand.RemoveAt(Index);
 		DiscardPile.Add(Card);
+
+		// Broadcast hand change
+		OnHandChanged.Broadcast(Hand);
+
 		return true;
 	}
 
