@@ -84,6 +84,64 @@ void AProjectChairsPlayerState::BeginPlay()
 	{
 		InitializeDeckFromConfiguration(DefaultDeckConfiguration);
 		ShuffleDeck();
+
+		// Draw initial hand
+		DrawCards(InitialDrawCount);
+		UE_LOG(LogTemp, Log, TEXT("[Cards] Drew initial hand of %d cards"), InitialDrawCount);
+	}
+
+	// Try to bind to turn change event (may need to retry if board isn't ready)
+	TryBindToTurnChange();
+}
+
+void AProjectChairsPlayerState::TryBindToTurnChange()
+{
+	if (bBoundToTurnChange)
+	{
+		return;
+	}
+
+	// Find the board actor
+	TArray<AActor*> BoardActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AChessBoardActor::StaticClass(), BoardActors);
+
+	if (BoardActors.Num() > 0)
+	{
+		AChessBoardActor* Board = Cast<AChessBoardActor>(BoardActors[0]);
+		if (Board && Board->GameModel)
+		{
+			Board->GameModel->OnTurnChanged.AddDynamic(this, &AProjectChairsPlayerState::OnChessTurnChanged);
+			bBoundToTurnChange = true;
+			UE_LOG(LogTemp, Log, TEXT("[Cards] Bound to OnTurnChanged event"));
+			return;
+		}
+	}
+
+	// Board not ready yet, try again after a short delay
+	GetWorld()->GetTimerManager().SetTimer(
+		BindTurnChangeTimerHandle,
+		this,
+		&AProjectChairsPlayerState::TryBindToTurnChange,
+		0.5f,
+		false
+	);
+}
+
+void AProjectChairsPlayerState::OnChessTurnChanged(EPieceColor NewSideToMove)
+{
+	UE_LOG(LogTemp, Log, TEXT("[Cards] Turn changed to %d, my color is %d"), (int32)NewSideToMove, (int32)AssignedChessColor);
+
+	// Reset the card played flag for this player
+	if (NewSideToMove == AssignedChessColor)
+	{
+		bHasPlayedCardThisTurn = false;
+
+		// Draw a card at the start of our turn (server only, will replicate)
+		if (HasAuthority())
+		{
+			DrawCards(TurnDrawCount);
+			UE_LOG(LogTemp, Log, TEXT("[Cards] Drew %d card(s) at start of turn"), TurnDrawCount);
+		}
 	}
 }
 

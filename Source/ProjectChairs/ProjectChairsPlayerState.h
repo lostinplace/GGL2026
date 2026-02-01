@@ -168,6 +168,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cards")
 	int32 MaxHandSize = 5;
 
+	/** Number of cards to draw at game start */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cards")
+	int32 InitialDrawCount = 3;
+
+	/** Number of cards to draw at the start of each turn */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cards")
+	int32 TurnDrawCount = 1;
+
 	/** The player's current deck (cards not yet drawn) */
 	UPROPERTY(BlueprintReadOnly, Category = "Cards")
 	TArray<UCardObject*> Deck;
@@ -203,4 +211,17 @@ protected:
 	/** Whether the player has played a card this turn */
 	UPROPERTY(BlueprintReadOnly, Category = "Card Selection")
 	bool bHasPlayedCardThisTurn;
+
+	/** Whether we've already bound to the turn change event */
+	bool bBoundToTurnChange = false;
+
+	/** Called when the chess turn changes - draws a card if it's now this player's turn */
+	UFUNCTION()
+	void OnChessTurnChanged(EPieceColor NewSideToMove);
+
+	/** Attempt to bind to the board's turn change event */
+	void TryBindToTurnChange();
+
+	/** Timer handle for delayed binding */
+	FTimerHandle BindTurnChangeTimerHandle;
 };
