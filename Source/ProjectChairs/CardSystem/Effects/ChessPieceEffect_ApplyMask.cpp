@@ -2,6 +2,7 @@
 
 #include "ChessPieceEffect_ApplyMask.h"
 #include "Presentation/ChessPieceActor.h"
+#include "Presentation/ChessBoardActor.h"
 
 UChessPieceEffect_ApplyMask::UChessPieceEffect_ApplyMask()
 	: MaskPieceType(EPieceType::Knight)
@@ -14,10 +15,21 @@ void UChessPieceEffect_ApplyMask::OnApply_Implementation(AChessPieceActor* Targe
 {
 	Super::OnApply_Implementation(TargetPiece);
 
-	if (TargetPiece)
+	if (!TargetPiece)
 	{
-		// Apply the mask to the piece
-		// This updates the game model which will broadcast to update visuals
+		return;
+	}
+
+	// Get the board actor to call the replicated request
+	AChessBoardActor* BoardActor = Cast<AChessBoardActor>(TargetPiece->GetAttachParentActor());
+	if (BoardActor)
+	{
+		// Use Request function which routes through server for replication
+		BoardActor->RequestSetPieceMask(TargetPiece->PieceId, MaskPieceType);
+	}
+	else
+	{
+		// Fallback for non-networked scenarios
 		TargetPiece->SetMask(MaskPieceType);
 	}
 }

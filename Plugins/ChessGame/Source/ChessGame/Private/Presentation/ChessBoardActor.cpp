@@ -622,10 +622,79 @@ void AChessBoardActor::Multicast_BroadcastMove_Implementation(FChessMove Move)
 	{
 		GameModel->TryApplyMove(Move);
 	}
-	
+
 	// Visuals are updated via OnMoveApplied event which GameModel broadcasts
-	// And we bound that in BeginPlay. 
+	// And we bound that in BeginPlay.
 	// So just ensure local model is consistent.
+}
+
+void AChessBoardActor::RequestSetPieceMask(int32 PieceId, EPieceType NewMask)
+{
+	// If we have authority, call multicast directly
+	if (HasAuthority())
+	{
+		Multicast_SetPieceMask(PieceId, NewMask);
+	}
+	else
+	{
+		// Route through player controller's server RPC
+		if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+		{
+			if (AChessPlayerController* ChessPC = Cast<AChessPlayerController>(PC))
+			{
+				ChessPC->Server_SetPieceMask(this, PieceId, NewMask);
+			}
+		}
+	}
+}
+
+void AChessBoardActor::RequestRemovePiece(int32 PieceId)
+{
+	// If we have authority, call multicast directly
+	if (HasAuthority())
+	{
+		Multicast_RemovePiece(PieceId);
+	}
+	else
+	{
+		// Route through player controller's server RPC
+		if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+		{
+			if (AChessPlayerController* ChessPC = Cast<AChessPlayerController>(PC))
+			{
+				ChessPC->Server_RemovePiece(this, PieceId);
+			}
+		}
+	}
+}
+
+void AChessBoardActor::Multicast_SetPieceMask_Implementation(int32 PieceId, EPieceType NewMask)
+{
+	if (GameModel)
+	{
+		GameModel->SetPieceMask(PieceId, NewMask);
+	}
+
+	// Update replicated state on server
+	if (HasAuthority() && GameModel && GameModel->BoardState)
+	{
+		ReplicatedState = GameModel->BoardState->ToStruct();
+	}
+}
+
+void AChessBoardActor::Multicast_RemovePiece_Implementation(int32 PieceId)
+{
+	if (GameModel && GameModel->BoardState)
+	{
+		GameModel->BoardState->RemovePiece(PieceId);
+		GameModel->OnPieceCaptured.Broadcast(PieceId);
+	}
+
+	// Update replicated state on server
+	if (HasAuthority() && GameModel && GameModel->BoardState)
+	{
+		ReplicatedState = GameModel->BoardState->ToStruct();
+	}
 }
 
 void AChessBoardActor::OnRep_ReplicatedState()

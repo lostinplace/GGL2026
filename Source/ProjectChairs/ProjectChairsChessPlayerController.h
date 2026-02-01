@@ -58,12 +58,7 @@ protected:
 	/** Clears all card target highlights */
 	void ClearCardTargetHighlights();
 
-	/** Called when a chess move is made - resets card played status for the player whose turn it now is */
-	void CheckAndResetCardPlayedOnTurnChange();
-
-	/** Tracks the last known side to move, for detecting turn changes */
-	EPieceColor LastKnownSideToMove;
-
-	/** Whether we've initialized LastKnownSideToMove */
-	bool bHasInitializedTurnTracking;
+	/** Called when the turn changes - resets card played status */
+	UFUNCTION()
+	void OnChessTurnChanged(EPieceColor NewSideToMove);
 };

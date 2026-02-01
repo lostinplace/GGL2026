@@ -12,8 +12,6 @@
 #include "EnhancedInputComponent.h"
 
 AProjectChairsChessPlayerController::AProjectChairsChessPlayerController()
-	: LastKnownSideToMove(EPieceColor::White)
-	, bHasInitializedTurnTracking(false)
 {
 }
 
@@ -21,14 +19,20 @@ void AProjectChairsChessPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Bind to PlayerState's card selection delegate
-	// Use a timer to ensure PlayerState is valid (may not be immediately available)
+	// Bind to PlayerState's card selection delegate and GameModel's turn changed delegate
+	// Use a timer to ensure PlayerState and CurrentBoard are valid (may not be immediately available)
 	FTimerHandle BindTimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(BindTimerHandle, [this]()
 	{
 		if (AProjectChairsPlayerState* PS = GetProjectChairsPlayerState())
 		{
 			PS->OnSelectedCardChanged.AddDynamic(this, &AProjectChairsChessPlayerController::OnSelectedCardChanged);
+		}
+
+		// Bind to turn changed event from the GameModel
+		if (CurrentBoard && CurrentBoard->GameModel)
+		{
+			CurrentBoard->GameModel->OnTurnChanged.AddDynamic(this, &AProjectChairsChessPlayerController::OnChessTurnChanged);
 		}
 	}, 0.1f, false);
 }
@@ -52,9 +56,6 @@ void AProjectChairsChessPlayerController::SetupInputComponent()
 void AProjectChairsChessPlayerController::OnProjectChairsMouseClick()
 {
 	UE_LOG(LogTemp, Log, TEXT("[CardController] OnProjectChairsMouseClick called"));
-
-	// Check for turn changes and reset card played status if needed
-	CheckAndResetCardPlayedOnTurnChange();
 
 	// First, check if we're in card targeting mode
 	AProjectChairsPlayerState* PS = GetProjectChairsPlayerState();
@@ -337,38 +338,13 @@ void AProjectChairsChessPlayerController::ClearCardTargetHighlights()
 	}
 }
 
-void AProjectChairsChessPlayerController::CheckAndResetCardPlayedOnTurnChange()
+void AProjectChairsChessPlayerController::OnChessTurnChanged(EPieceColor NewSideToMove)
 {
-	if (!CurrentBoard || !CurrentBoard->GameModel || !CurrentBoard->GameModel->BoardState)
+	// Reset card played status when the turn changes
+	if (AProjectChairsPlayerState* PS = GetProjectChairsPlayerState())
 	{
-		return;
-	}
-
-	EPieceColor CurrentSideToMove = CurrentBoard->GameModel->BoardState->SideToMove;
-
-	// Initialize on first check
-	if (!bHasInitializedTurnTracking)
-	{
-		LastKnownSideToMove = CurrentSideToMove;
-		bHasInitializedTurnTracking = true;
-		return;
-	}
-
-	// Check if the turn has changed
-	if (CurrentSideToMove != LastKnownSideToMove)
-	{
-		LastKnownSideToMove = CurrentSideToMove;
-
-		// Reset card played status for the player whose turn it now is
-		if (AProjectChairsPlayerState* PS = GetProjectChairsPlayerState())
-		{
-			// Only reset if it's now this player's turn
-			if (PS->AssignedChessColor == CurrentSideToMove)
-			{
-				PS->ResetCardPlayedThisTurn();
-				UE_LOG(LogTemp, Log, TEXT("[CardController] Turn changed to %s, reset card played status"),
-					CurrentSideToMove == EPieceColor::White ? TEXT("White") : TEXT("Black"));
-			}
-		}
+		PS->ResetCardPlayedThisTurn();
+		UE_LOG(LogTemp, Log, TEXT("[CardController] Turn changed to %s, reset card played status"),
+			NewSideToMove == EPieceColor::White ? TEXT("White") : TEXT("Black"));
 	}
 }

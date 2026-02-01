@@ -288,6 +288,32 @@ void AChessPlayerController::Server_SubmitMove_Implementation(AChessBoardActor* 
 	}
 }
 
+bool AChessPlayerController::Server_SetPieceMask_Validate(AChessBoardActor* Board, int32 PieceId, EPieceType NewMask)
+{
+	return Board != nullptr;
+}
+
+void AChessPlayerController::Server_SetPieceMask_Implementation(AChessBoardActor* Board, int32 PieceId, EPieceType NewMask)
+{
+	if (Board)
+	{
+		Board->Multicast_SetPieceMask(PieceId, NewMask);
+	}
+}
+
+bool AChessPlayerController::Server_RemovePiece_Validate(AChessBoardActor* Board, int32 PieceId)
+{
+	return Board != nullptr;
+}
+
+void AChessPlayerController::Server_RemovePiece_Implementation(AChessBoardActor* Board, int32 PieceId)
+{
+	if (Board)
+	{
+		Board->Multicast_RemovePiece(PieceId);
+	}
+}
+
 EPieceColor AChessPlayerController::GetActivePlayerColor() const
 {
 	if (CurrentBoard && CurrentBoard->GameModel && CurrentBoard->GameModel->BoardState)

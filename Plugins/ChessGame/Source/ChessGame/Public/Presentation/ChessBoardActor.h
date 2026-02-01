@@ -100,6 +100,20 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_BroadcastMove(FChessMove Move);
 
+	// Card Effect RPCs - these replicate card effect changes to all clients
+	// Call these from effects - they will route through server if needed
+	UFUNCTION(BlueprintCallable, Category = "Card Effects")
+	void RequestSetPieceMask(int32 PieceId, EPieceType NewMask);
+
+	UFUNCTION(BlueprintCallable, Category = "Card Effects")
+	void RequestRemovePiece(int32 PieceId);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetPieceMask(int32 PieceId, EPieceType NewMask);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_RemovePiece(int32 PieceId);
+
 	UPROPERTY(ReplicatedUsing = OnRep_ReplicatedState)
 	FChessBoardStateData ReplicatedState;
 
@@ -107,7 +121,6 @@ public:
 	void OnRep_ReplicatedState();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 
 	// Blueprint Events
 	UFUNCTION(BlueprintNativeEvent)

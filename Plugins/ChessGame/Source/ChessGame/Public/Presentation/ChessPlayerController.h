@@ -67,4 +67,11 @@ public:
 	// Server RPC to submit move
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_SubmitMove(AChessBoardActor* Board, FChessMove Move);
+
+	// Server RPCs for card effects
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_SetPieceMask(AChessBoardActor* Board, int32 PieceId, EPieceType NewMask);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_RemovePiece(AChessBoardActor* Board, int32 PieceId);
 };
